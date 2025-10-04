@@ -52,3 +52,29 @@ def debug_admin():
             return {"admin_exists": False}
     except Exception as e:
         return {"error": str(e)}
+
+@app.post("/create-admin")
+def create_admin():
+    from database import get_db
+    from models import Admin
+    from datetime import datetime
+    import hashlib
+    try:
+        db = next(get_db())
+        
+        # Check if admin already exists
+        existing_admin = db.query(Admin).filter(Admin.username == 'ACS_CanDrive').first()
+        if existing_admin:
+            return {"message": "Admin user already exists", "username": existing_admin.username}
+        
+        # Create admin user
+        admin = Admin(
+            username='ACS_CanDrive',
+            password_hash=hashlib.sha256('Assumption_raiders'.encode()).hexdigest(),
+            created_at=datetime.now()
+        )
+        db.add(admin)
+        db.commit()
+        return {"message": "Admin user created successfully", "username": "ACS_CanDrive", "password": "Assumption_raiders"}
+    except Exception as e:
+        return {"error": str(e)}
