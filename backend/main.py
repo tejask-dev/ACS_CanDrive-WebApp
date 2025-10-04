@@ -77,6 +77,29 @@ def test_students():
     except Exception as e:
         return {"error": str(e)}
 
+@app.get("/api/events/1/students")
+def get_students_direct():
+    from database import get_db
+    from models import Student
+    try:
+        db = next(get_db())
+        students = db.query(Student).filter(Student.event_id == 1).all()
+        return [
+            {
+                "id": s.id,
+                "name": (f"{(s.first_name or '').strip()} {(s.last_name or '').strip()}".strip()) or None,
+                "first_name": s.first_name,
+                "last_name": s.last_name,
+                "grade": s.grade,
+                "homeroomNumber": s.homeroom_number,
+                "homeroomTeacher": s.homeroom_teacher,
+                "totalCans": s.total_cans or 0,
+            }
+            for s in students
+        ]
+    except Exception as e:
+        return {"error": str(e)}
+
 @app.get("/create-admin")
 def create_admin():
     from database import get_db
