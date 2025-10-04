@@ -78,54 +78,6 @@ def test_students(grade: str = None, homeroom: str = None, name: str = None, tea
     except Exception as e:
         return {"error": str(e)}
 
-@app.get("/api/events/1/students")
-def get_students_direct(grade: str = None, homeroom: str = None, name: str = None, teacher: str = None):
-    from database import get_db
-    from models import Student
-    from sqlalchemy import String
-    try:
-        db = next(get_db())
-        query = db.query(Student).filter(Student.event_id == 1)
-        
-        # Debug: Print filter parameters
-        print(f"🔍 Backend Debug - Received params: grade='{grade}', homeroom='{homeroom}', name='{name}', teacher='{teacher}'")
-        print(f"🔍 Backend Debug - Type check: grade={type(grade)}, homeroom={type(homeroom)}")
-        
-        # Apply filters
-        if grade:
-            print(f"Applying grade filter: {grade}")
-            query = query.filter(Student.grade == float(grade))
-        if homeroom:
-            print(f"Applying homeroom filter: {homeroom}")
-            # Handle both string and float homeroom numbers
-            query = query.filter(
-                (Student.homeroom_number.ilike(f"%{homeroom}%")) |
-                (Student.homeroom_number.cast(String).ilike(f"%{homeroom}%"))
-            )
-        if name:
-            print(f"Applying name filter: {name}")
-            query = query.filter((Student.first_name + " " + Student.last_name).ilike(f"%{name}%"))
-        if teacher:
-            print(f"Applying teacher filter: {teacher}")
-            query = query.filter(Student.homeroom_teacher.ilike(f"%{teacher}%"))
-        
-        students = query.all()
-        print(f"Found {len(students)} students after filtering")
-        return [
-            {
-                "id": s.id,
-                "name": (f"{(s.first_name or '').strip()} {(s.last_name or '').strip()}".strip()) or None,
-                "first_name": s.first_name,
-                "last_name": s.last_name,
-                "grade": s.grade,
-                "homeroomNumber": s.homeroom_number,
-                "homeroomTeacher": s.homeroom_teacher,
-                "totalCans": s.total_cans or 0,
-            }
-            for s in students
-        ]
-    except Exception as e:
-        return {"error": str(e)}
 
 @app.get("/create-admin")
 def create_admin():
