@@ -8,13 +8,9 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",  # Local development
-        "https://acs-can-drive-webapp.vercel.app",  # Replace with your actual Vercel URL
-        "https://*.vercel.app",  # Allow all Vercel previews
-    ],
+    allow_origins=["*"],  # Allow all origins for now
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 
@@ -29,3 +25,11 @@ app.include_router(map_reservations.router, prefix="/api/events/{event_id}/map-r
 @app.get("/")
 def read_root():
     return {"msg": "ACS Can Drive API running"}
+
+@app.get("/health")
+def health_check():
+    return {"status": "healthy", "msg": "ACS Can Drive API running"}
+
+@app.options("/{path:path}")
+def options_handler(path: str):
+    return {"message": "OK"}

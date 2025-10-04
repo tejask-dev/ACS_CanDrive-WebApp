@@ -13,7 +13,7 @@ class Event(EventBase):
     id: int
     created_at: datetime.datetime
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class StudentBase(BaseModel):
     first_name: str
@@ -30,7 +30,7 @@ class Student(StudentBase):
     total_cans: int
     created_at: datetime.datetime
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class AdminBase(BaseModel):
     username: str
@@ -45,7 +45,7 @@ class Admin(AdminBase):
     created_at: datetime.datetime
     last_login: Optional[datetime.datetime]
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class AdminLogin(BaseModel):
     username: str
@@ -66,7 +66,7 @@ class Donation(DonationCreate):
     id: int
     timestamp: datetime.datetime
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class MapReservationCreate(BaseModel):
     student_id: Optional[int] = None
@@ -79,4 +79,4 @@ class MapReservation(MapReservationCreate):
     timestamp: datetime.datetime
     event_id: int
     class Config:
-        orm_mode = True
+        from_attributes = True
