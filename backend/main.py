@@ -44,7 +44,7 @@ ensure_admin_user()
 app.include_router(admin.router, prefix="/api/auth", tags=["auth"])
 app.include_router(events.router, prefix="/api/events", tags=["events"])
 # app.include_router(students.router, prefix="/api/events/{event_id}/students", tags=["students"])  # Temporarily disabled due to route conflict
-app.include_router(donations.router, prefix="/api/events/{event_id}/donations", tags=["donations"])
+# app.include_router(donations.router, prefix="/api/events/{event_id}/donations", tags=["donations"])  # Temporarily disabled due to route conflict
 # app.include_router(map_reservations.router, prefix="/api/events/{event_id}/map-reservations", tags=["map"])  # Temporarily disabled due to route conflict
 
 @app.get("/")
@@ -221,6 +221,50 @@ def verify_student_direct(payload: dict):
         else:
             return {"error": "Student not found in roster"}
             
+    except Exception as e:
+        return {"error": str(e)}
+
+@app.get("/api/events/1/donations")
+def list_donations_direct():
+    from database import get_db
+    from models import Donation
+    try:
+        db = next(get_db())
+        donations = db.query(Donation).filter(Donation.event_id == 1).all()
+        return donations
+    except Exception as e:
+        return {"error": str(e)}
+
+@app.post("/api/events/1/donations")
+def add_donation_direct(payload: dict):
+    from database import get_db
+    from models import Donation, Student
+    try:
+        db = next(get_db())
+        
+        # Create donation
+        donation = Donation(
+            event_id=1,
+            student_id=payload.get('student_id'),
+            amount=payload.get('amount', 0)
+        )
+        
+        db.add(donation)
+        
+        # Increment student's total_cans
+        student = db.query(Student).filter(
+            Student.id == payload.get('student_id'), 
+            Student.event_id == 1
+        ).first()
+        
+        if student:
+            student.total_cans = (student.total_cans or 0) + payload.get('amount', 0)
+        else:
+            return {"error": "Student not found"}
+        
+        db.commit()
+        db.refresh(donation)
+        return donation
     except Exception as e:
         return {"error": str(e)}
 

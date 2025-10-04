@@ -1,0 +1,26 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Can body -->
+  <ellipse cx="32" cy="32" rx="20" ry="28" fill="#8B5CF6" stroke="#6B46C1" stroke-width="2"/>
+  
+  <!-- Top band -->
+  <ellipse cx="32" cy="18" rx="20" ry="4" fill="#8B5CF6"/>
+  
+  <!-- Bottom band -->
+  <ellipse cx="32" cy="46" rx="20" ry="4" fill="#8B5CF6"/>
+  
+  <!-- Center white band -->
+  <ellipse cx="32" cy="32" rx="18" ry="20" fill="#F8FAFC"/>
+  
+  <!-- ACS Text -->
+  <text x="32" y="36" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#1F2937">ACS</text>
+  
+  <!-- Can top -->
+  <ellipse cx="32" cy="16" rx="18" ry="3" fill="#E5E7EB"/>
+  <ellipse cx="32" cy="15" rx="16" ry="2" fill="#9CA3AF"/>
+  
+  <!-- Can bottom -->
+  <ellipse cx="32" cy="48" rx="18" ry="3" fill="#E5E7EB"/>
+  
+  <!-- Highlight -->
+  <ellipse cx="28" cy="20" rx="2" ry="1" fill="#FFFFFF" opacity="0.3"/>
+</svg>
