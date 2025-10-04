@@ -135,6 +135,70 @@ def search_students_direct(q: str):
     except Exception as e:
         return {"error": str(e)}
 
+@app.post("/api/events/1/students/verify")
+def verify_student_direct(payload: dict):
+    from database import get_db
+    from models import Student
+    try:
+        db = next(get_db())
+        
+        # Accept flexible payload shapes from frontend
+        name = (payload.get('name') or '').strip()
+        first_name = (payload.get('first_name') or '').strip()
+        last_name = (payload.get('last_name') or '').strip()
+        grade = payload.get('grade')
+        homeroom_number = payload.get('homeroom_number')
+        homeroom_teacher = payload.get('homeroom_teacher')
+        
+        if name and not (first_name or last_name):
+            # Parse "Last, First" or "First Last"
+            if ',' in name:
+                parts = [p.strip() for p in name.split(',', 1)]
+                if len(parts) == 2:
+                    last_name, first_name = parts[0], parts[1]
+            else:
+                parts = [p.strip() for p in name.split(' ') if p.strip()]
+                if len(parts) >= 2:
+                    first_name = parts[0]
+                    last_name = ' '.join(parts[1:])
+        
+        # Search for student
+        query = db.query(Student).filter(Student.event_id == 1)
+        
+        if first_name and last_name:
+            query = query.filter(
+                Student.first_name.ilike(f"%{first_name}%"),
+                Student.last_name.ilike(f"%{last_name}%")
+            )
+        elif name:
+            query = query.filter((Student.first_name + " " + Student.last_name).ilike(f"%{name}%"))
+        
+        if grade:
+            query = query.filter(Student.grade == float(grade))
+        if homeroom_number:
+            query = query.filter(Student.homeroom_number.ilike(f"%{homeroom_number}%"))
+        if homeroom_teacher:
+            query = query.filter(Student.homeroom_teacher.ilike(f"%{homeroom_teacher}%"))
+        
+        student = query.first()
+        
+        if student:
+            return {
+                "id": student.id,
+                "name": f"{student.first_name} {student.last_name}",
+                "first_name": student.first_name,
+                "last_name": student.last_name,
+                "grade": student.grade,
+                "homeroom_number": student.homeroom_number,
+                "homeroom_teacher": student.homeroom_teacher,
+                "total_cans": student.total_cans or 0,
+            }
+        else:
+            return {"error": "Student not found in roster"}
+            
+    except Exception as e:
+        return {"error": str(e)}
+
 @app.get("/api/events/1/students")
 def get_students_direct(grade: str = None, homeroom: str = None, name: str = None, teacher: str = None):
     from database import get_db
