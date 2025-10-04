@@ -16,6 +16,31 @@ app.add_middleware(
 
 init_db()
 
+# Ensure admin user exists on startup
+def ensure_admin_user():
+    from database import get_db
+    from models import Admin
+    from datetime import datetime
+    import hashlib
+    try:
+        db = next(get_db())
+        existing_admin = db.query(Admin).filter(Admin.username == 'ACS_CanDrive').first()
+        if not existing_admin:
+            admin = Admin(
+                username='ACS_CanDrive',
+                password_hash=hashlib.sha256('Assumption_raiders'.encode()).hexdigest(),
+                created_at=datetime.now()
+            )
+            db.add(admin)
+            db.commit()
+            print('✅ Admin user created on startup!')
+        else:
+            print('✅ Admin user already exists')
+    except Exception as e:
+        print(f'❌ Error ensuring admin user: {e}')
+
+ensure_admin_user()
+
 app.include_router(admin.router, prefix="/api/auth", tags=["auth"])
 app.include_router(events.router, prefix="/api/events", tags=["events"])
 # app.include_router(students.router, prefix="/api/events/{event_id}/students", tags=["students"])  # Temporarily disabled due to route conflict
