@@ -86,21 +86,29 @@ def get_students_direct(grade: str = None, homeroom: str = None, name: str = Non
         db = next(get_db())
         query = db.query(Student).filter(Student.event_id == 1)
         
+        # Debug: Print filter parameters
+        print(f"Filter params: grade={grade}, homeroom={homeroom}, name={name}, teacher={teacher}")
+        
         # Apply filters
         if grade:
+            print(f"Applying grade filter: {grade}")
             query = query.filter(Student.grade == float(grade))
         if homeroom:
+            print(f"Applying homeroom filter: {homeroom}")
             # Handle both string and float homeroom numbers
             query = query.filter(
                 (Student.homeroom_number.ilike(f"%{homeroom}%")) |
                 (Student.homeroom_number.cast(String).ilike(f"%{homeroom}%"))
             )
         if name:
+            print(f"Applying name filter: {name}")
             query = query.filter((Student.first_name + " " + Student.last_name).ilike(f"%{name}%"))
         if teacher:
+            print(f"Applying teacher filter: {teacher}")
             query = query.filter(Student.homeroom_teacher.ilike(f"%{teacher}%"))
         
         students = query.all()
+        print(f"Found {len(students)} students after filtering")
         return [
             {
                 "id": s.id,
