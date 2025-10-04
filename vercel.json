@@ -15,7 +15,13 @@
       "dest": "acs-can-drive-frontend/$1"
     }
   ],
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ],
   "env": {
-    "VITE_API_BASE_URL": "https://your-backend-url.vercel.app/api"
+    "VITE_API_BASE_URL": "https://acs-candrive-webapp.onrender.com/api"
   }
 }
