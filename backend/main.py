@@ -18,7 +18,7 @@ init_db()
 
 app.include_router(admin.router, prefix="/api/auth", tags=["auth"])
 app.include_router(events.router, prefix="/api/events", tags=["events"])
-# app.include_router(students.router, prefix="/api/events/{event_id}/students", tags=["students"])  # Temporarily disabled due to route conflict
+app.include_router(students.router, prefix="/api/events/{event_id}/students", tags=["students"])
 app.include_router(donations.router, prefix="/api/events/{event_id}/donations", tags=["donations"])
 app.include_router(map_reservations.router, prefix="/api/events/{event_id}/map-reservations", tags=["map"])
 
@@ -75,35 +75,6 @@ def test_students(grade: str = None, homeroom: str = None, name: str = None, tea
                 for s in students[:5]  # First 5 students
             ]
         }
-    except Exception as e:
-        return {"error": str(e)}
-
-@app.get("/api/events/1/students/search")
-def search_students_direct(q: str):
-    from database import get_db
-    from models import Student
-    try:
-        db = next(get_db())
-        query = db.query(Student).filter(Student.event_id == 1)
-        
-        # Search by name (first_name + last_name)
-        if q:
-            query = query.filter((Student.first_name + " " + Student.last_name).ilike(f"%{q}%"))
-        
-        students = query.limit(10).all()  # Limit to 10 results for autocomplete
-        return [
-            {
-                "id": s.id,
-                "name": (f"{(s.first_name or '').strip()} {(s.last_name or '').strip()}".strip()) or None,
-                "first_name": s.first_name,
-                "last_name": s.last_name,
-                "grade": s.grade,
-                "homeroomNumber": s.homeroom_number,
-                "homeroomTeacher": s.homeroom_teacher,
-                "totalCans": s.total_cans or 0,
-            }
-            for s in students
-        ]
     except Exception as e:
         return {"error": str(e)}
 
