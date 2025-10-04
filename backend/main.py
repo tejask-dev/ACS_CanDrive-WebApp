@@ -33,3 +33,22 @@ def health_check():
 @app.options("/{path:path}")
 def options_handler(path: str):
     return {"message": "OK"}
+
+@app.get("/debug/admin")
+def debug_admin():
+    from database import get_db
+    from models import Admin
+    try:
+        db = next(get_db())
+        admin = db.query(Admin).filter(Admin.username == 'ACS_CanDrive').first()
+        if admin:
+            return {
+                "admin_exists": True,
+                "username": admin.username,
+                "created_at": str(admin.created_at),
+                "password_hash": admin.password_hash[:20] + "..."
+            }
+        else:
+            return {"admin_exists": False}
+    except Exception as e:
+        return {"error": str(e)}
