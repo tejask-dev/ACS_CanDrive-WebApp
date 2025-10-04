@@ -53,6 +53,30 @@ def debug_admin():
     except Exception as e:
         return {"error": str(e)}
 
+@app.get("/test-students")
+def test_students():
+    from database import get_db
+    from models import Student
+    try:
+        db = next(get_db())
+        students = db.query(Student).filter(Student.event_id == 1).all()
+        return {
+            "count": len(students),
+            "students": [
+                {
+                    "id": s.id,
+                    "name": f"{s.first_name} {s.last_name}".strip(),
+                    "grade": s.grade,
+                    "homeroom": s.homeroom_number,
+                    "teacher": s.homeroom_teacher,
+                    "total_cans": s.total_cans
+                }
+                for s in students[:5]  # First 5 students
+            ]
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
 @app.get("/create-admin")
 def create_admin():
     from database import get_db
