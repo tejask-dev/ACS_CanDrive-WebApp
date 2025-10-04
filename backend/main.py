@@ -54,7 +54,7 @@ def debug_admin():
         return {"error": str(e)}
 
 @app.get("/test-students")
-def test_students():
+def test_students(grade: str = None, homeroom: str = None, name: str = None, teacher: str = None):
     from database import get_db
     from models import Student
     try:
@@ -62,6 +62,7 @@ def test_students():
         students = db.query(Student).filter(Student.event_id == 1).all()
         return {
             "count": len(students),
+            "params": {"grade": grade, "homeroom": homeroom, "name": name, "teacher": teacher},
             "students": [
                 {
                     "id": s.id,
