@@ -45,24 +45,6 @@ const LeaderboardView = () => {
       if (response.data) {
         setData(response.data);
         console.log('Admin leaderboard data set:', response.data);
-        
-        // If data is empty, show test data
-        if (response.data.totalCans === 0 && response.data.topStudents.length === 0) {
-          console.log('Empty data received, showing test data...');
-          setData({
-            topStudents: [
-              { rank: 1, name: "Tejas Kaushik", grade: 12, homeroomNumber: "A101", totalCans: 100, change: 0 }
-            ],
-            topClasses: [
-              { rank: 1, name: "Test Class", homeroomNumber: "A101", totalCans: 100 }
-            ],
-            topGrades: [
-              { rank: 1, name: "Grade 12", grade: 12, totalCans: 100 }
-            ],
-            totalCans: 100
-          });
-          toast.success('Showing test data - Tejas with 100 cans');
-        }
       } else {
         console.warn('No data received from admin leaderboard API');
         setData({ topStudents: [], topClasses: [], topGrades: [], totalCans: 0 });
@@ -72,26 +54,8 @@ const LeaderboardView = () => {
       console.error('Error response:', error.response?.data);
       console.error('Error status:', error.response?.status);
       
-      // Show test data if API fails
-      if (error.response?.status === 404) {
-        console.log('Event not found, showing test data...');
-        setData({
-          topStudents: [
-            { rank: 1, name: "Tejas Kaushik", grade: 12, homeroomNumber: "A101", totalCans: 100, change: 0 }
-          ],
-          topClasses: [
-            { rank: 1, name: "Test Class", homeroomNumber: "A101", totalCans: 100 }
-          ],
-          topGrades: [
-            { rank: 1, name: "Grade 12", grade: 12, totalCans: 100 }
-          ],
-          totalCans: 100
-        });
-        toast.success('Showing test data - Tejas with 100 cans');
-      } else {
-        toast.error('Failed to load leaderboard');
-        setData({ topStudents: [], topClasses: [], topGrades: [], totalCans: 0 });
-      }
+      toast.error('Failed to load leaderboard');
+      setData({ topStudents: [], topClasses: [], topGrades: [], totalCans: 0 });
     }
   };
 

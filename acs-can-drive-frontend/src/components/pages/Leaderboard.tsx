@@ -61,19 +61,7 @@ const Leaderboard = () => {
         console.log('Top classes from API:', response.data.topClasses);
         console.log('Top grades from API:', response.data.topGrades);
         
-        // If students are empty but we have total cans, create test data
-        if (response.data.topStudents.length === 0 && response.data.totalCans > 0) {
-          console.log('Students empty but total cans > 0, creating test data...');
-          setData({
-            ...response.data,
-            topStudents: [
-              { rank: 1, name: "Tejas Kaushik", grade: 12, homeroomNumber: "A101", totalCans: 100, change: 0 },
-              { rank: 2, name: "Shehwaz Saini", grade: 11, homeroomNumber: "B102", totalCans: 10, change: 0 }
-            ]
-          });
-        } else {
-          setData(response.data);
-        }
+        setData(response.data);
         console.log('Data set successfully:', response.data);
       } else {
         console.warn('No data received from API');
@@ -84,26 +72,8 @@ const Leaderboard = () => {
       console.error('Error response:', error.response?.data);
       console.error('Error status:', error.response?.status);
       
-      // Show error message to user
-      if (error.response?.status === 404) {
-        console.error('Event not found. Creating test data...');
-        // Create test data if event doesn't exist
-        setData({
-          topStudents: [
-            { rank: 1, name: "Tejas Kaushik", grade: 12, homeroomNumber: "A101", totalCans: 100, change: 0 }
-          ],
-          topClasses: [
-            { rank: 1, name: "Test Class", homeroomNumber: "A101", totalCans: 100 }
-          ],
-          topGrades: [
-            { rank: 1, name: "Grade 12", grade: 12, totalCans: 100 }
-          ],
-          totalCans: 100
-        });
-      } else {
-        // Set empty data on other errors
-        setData({ topStudents: [], topClasses: [], topGrades: [], totalCans: 0 });
-      }
+      // Set empty data on errors
+      setData({ topStudents: [], topClasses: [], topGrades: [], totalCans: 0 });
     } finally {
       setLoading(false);
     }

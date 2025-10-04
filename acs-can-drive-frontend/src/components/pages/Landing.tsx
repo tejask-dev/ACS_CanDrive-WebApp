@@ -24,25 +24,12 @@ const Landing = () => {
       setLeaderboardData(response.data);
     } catch (error) {
       console.error('Failed to load leaderboard:', error);
-      // Set fallback data
+      // Set empty data on error
       setLeaderboardData({
-        topStudents: [
-          { rank: 1, name: "Yara Shaker", grade: "12.0", homeroomNumber: "11.0", totalCans: 150 },
-          { rank: 2, name: "Tejas Kaushik", grade: "12.0", homeroomNumber: "18.0", totalCans: 100 },
-          { rank: 3, name: "Shehwaz Saini", grade: "11.0", homeroomNumber: "10.0", totalCans: 10 }
-        ],
-        topClasses: [
-          { rank: 1, name: "Ianni, J 11.0", homeroomNumber: "11.0", totalCans: 150 },
-          { rank: 2, name: "Milovic, M 18.0", homeroomNumber: "18.0", totalCans: 100 },
-          { rank: 3, name: "Esping, M 10.0", homeroomNumber: "10.0", totalCans: 10 }
-        ],
-        topGrades: [
-          { rank: 1, grade: "12.0", totalCans: 250 },
-          { rank: 2, grade: "11.0", totalCans: 10 },
-          { rank: 3, grade: "9.0", totalCans: 0 },
-          { rank: 4, grade: "10.0", totalCans: 0 }
-        ],
-        totalCans: 260
+        topStudents: [],
+        topClasses: [],
+        topGrades: [],
+        totalCans: 0
       });
     } finally {
       setLoading(false);
