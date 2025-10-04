@@ -49,10 +49,16 @@ const StudentManagement = () => {
       if (filters.name) params.append('name', filters.name);
       if (filters.teacher) params.append('teacher', filters.teacher);
       
-      const response = await api.get(`${API_ENDPOINTS.EVENTS.STUDENTS('1')}?${params}`);
+      const url = `${API_ENDPOINTS.EVENTS.STUDENTS('1')}?${params}`;
+      console.log('🔍 Frontend Debug - Filters:', filters);
+      console.log('🔍 Frontend Debug - URL:', url);
+      console.log('🔍 Frontend Debug - Params string:', params.toString());
+      
+      const response = await api.get(url);
       console.log('Students API response:', response.data.slice(0, 3)); // Debug first 3 students
       setStudents(response.data);
     } catch (error) {
+      console.error('❌ Frontend Error:', error);
       toast.error('Failed to load students');
     }
   };

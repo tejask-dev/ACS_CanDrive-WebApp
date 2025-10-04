@@ -88,7 +88,8 @@ def get_students_direct(grade: str = None, homeroom: str = None, name: str = Non
         query = db.query(Student).filter(Student.event_id == 1)
         
         # Debug: Print filter parameters
-        print(f"Filter params: grade={grade}, homeroom={homeroom}, name={name}, teacher={teacher}")
+        print(f"🔍 Backend Debug - Received params: grade='{grade}', homeroom='{homeroom}', name='{name}', teacher='{teacher}'")
+        print(f"🔍 Backend Debug - Type check: grade={type(grade)}, homeroom={type(homeroom)}")
         
         # Apply filters
         if grade:
