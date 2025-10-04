@@ -37,7 +37,18 @@ def list_students(event_id: int, grade: str = None, homeroom: str = None, name: 
 
 @router.get("/search")
 def search_students(event_id: int, q: str, db: Session = Depends(get_db)):
+    print(f"🔍 Search Debug - event_id: {event_id}, query: '{q}'")
     q_like = f"%{q}%"
+    
+    # First, let's see all students for this event
+    all_students = db.query(Student).filter(Student.event_id == event_id).all()
+    print(f"🔍 Search Debug - Total students in event {event_id}: {len(all_students)}")
+    
+    # Show first few student names for debugging
+    for i, s in enumerate(all_students[:5]):
+        full_name = f"{s.first_name} {s.last_name}"
+        print(f"🔍 Search Debug - Student {i+1}: '{full_name}'")
+    
     rows = (
         db.query(Student)
         .filter(
@@ -46,6 +57,8 @@ def search_students(event_id: int, q: str, db: Session = Depends(get_db)):
         )
         .all()
     )
+    print(f"🔍 Search Debug - Found {len(rows)} matching students")
+    
     return [
         {
             "id": s.id,
