@@ -224,6 +224,71 @@ def verify_student_direct(payload: dict):
     except Exception as e:
         return {"error": str(e)}
 
+@app.get("/api/events/1/map-reservations")
+def list_map_reservations_direct():
+    from database import get_db
+    from models import MapReservation
+    try:
+        db = next(get_db())
+        reservations = db.query(MapReservation).filter(MapReservation.event_id == 1).all()
+        return [
+            {
+                "id": r.id,
+                "eventId": r.event_id,
+                "studentId": r.student_id,
+                "studentName": r.name,
+                "streetName": r.street_name,
+                "latitude": 0,  # Default values since not in current model
+                "longitude": 0,
+                "createdAt": r.timestamp.isoformat() if r.timestamp else None
+            }
+            for r in reservations
+        ]
+    except Exception as e:
+        return {"error": str(e)}
+
+@app.post("/api/events/1/map-reservations")
+def reserve_street_direct(payload: dict):
+    from database import get_db
+    from models import MapReservation
+    try:
+        db = next(get_db())
+        
+        # Check if street is already reserved
+        existing = db.query(MapReservation).filter(
+            MapReservation.event_id == 1,
+            MapReservation.street_name.ilike(payload.get('street_name', ''))
+        ).first()
+        
+        if existing:
+            return {"error": "Street already reserved"}
+        
+        # Create new reservation
+        reservation = MapReservation(
+            event_id=1,
+            student_id=payload.get('student_id'),
+            name=payload.get('name'),
+            street_name=payload.get('street_name'),
+            geojson=payload.get('geojson', '{}')
+        )
+        
+        db.add(reservation)
+        db.commit()
+        db.refresh(reservation)
+        
+        return {
+            "id": reservation.id,
+            "eventId": reservation.event_id,
+            "studentId": reservation.student_id,
+            "studentName": reservation.name,
+            "streetName": reservation.street_name,
+            "latitude": 0,
+            "longitude": 0,
+            "createdAt": reservation.timestamp.isoformat() if reservation.timestamp else None
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
 @app.get("/api/events/1/students")
 def get_students_direct(grade: str = None, homeroom: str = None, name: str = None, teacher: str = None):
     from database import get_db
