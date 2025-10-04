@@ -39,6 +39,11 @@ const Landing = () => {
 
   useEffect(() => {
     loadLeaderboard();
+    
+    // Auto-refresh every 10 seconds
+    const interval = setInterval(loadLeaderboard, 10000);
+    
+    return () => clearInterval(interval);
   }, []);
 
   const features = [

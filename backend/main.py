@@ -238,9 +238,13 @@ def leaderboard_direct():
             return {"topStudents": [], "topClasses": [], "topGrades": [], "totalCans": 0}
 
         students = db.query(Student).filter(Student.event_id == 1).all()
+        print(f"DEBUG: Found {len(students)} students for event 1")
+        for s in students[:3]:  # Print first 3 students
+            print(f"DEBUG: Student {s.first_name} {s.last_name}, total_cans: {s.total_cans}")
 
         # Total cans overall
         total_cans = sum(int(s.total_cans or 0) for s in students)
+        print(f"DEBUG: Total cans: {total_cans}")
 
         # Top students
         sorted_students = sorted(students, key=lambda s: int(s.total_cans or 0), reverse=True)
