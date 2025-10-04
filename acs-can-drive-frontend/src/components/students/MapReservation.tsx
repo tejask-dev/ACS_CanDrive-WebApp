@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef } from 'react';
 import { GoogleMap, useJsApiLoader, Marker, InfoWindow, Autocomplete } from '@react-google-maps/api';
 import { Box, TextField, Button, Chip, Stack, Paper, Typography, CircularProgress } from '@mui/material';
-import { CheckCircle, LocationOn } from '@mui/icons-material';
+import { CheckCircle, LocationOn, Close } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import api from '@/services/api';
@@ -61,22 +61,7 @@ const MapReservation = ({ eventId, studentId, studentName, groupMembers, onCompl
     }
   };
 
-  const handleMapClick = (e: google.maps.MapMouseEvent) => {
-    if (!e.latLng) return;
-    
-    const geocoder = new google.maps.Geocoder();
-    geocoder.geocode({ location: e.latLng }, (results, status) => {
-      if (status === 'OK' && results?.[0]) {
-        const streetName = results[0].formatted_address;
-        setSelectedPlace({
-          lat: e.latLng!.lat(),
-          lng: e.latLng!.lng(),
-          name: streetName,
-        });
-        setShowInfo(true);
-      }
-    });
-  };
+  // Removed map clicking functionality - text input only
 
   const handlePlaceSelect = () => {
     if (!autocompleteRef.current) return;
@@ -125,6 +110,11 @@ const MapReservation = ({ eventId, studentId, studentName, groupMembers, onCompl
         toast.error('Failed to reserve street. Please try again.');
       }
     }
+  };
+
+  const handleRemoveReservation = (streetName: string) => {
+    setMyReservations(myReservations.filter(street => street !== streetName));
+    toast.success(`${streetName} removed from your reservations`);
   };
 
   if (!isLoaded) {
@@ -181,7 +171,7 @@ const MapReservation = ({ eventId, studentId, studentName, groupMembers, onCompl
         zoom={13}
         onLoad={onLoad}
         onUnmount={onUnmount}
-        onClick={handleMapClick}
+        // onClick={handleMapClick} // Removed clicking functionality
         options={{
           streetViewControl: false,
           mapTypeControl: false,
@@ -266,6 +256,8 @@ const MapReservation = ({ eventId, studentId, studentName, groupMembers, onCompl
                       color="success"
                       variant="outlined"
                       sx={{ fontWeight: 600 }}
+                      onDelete={() => handleRemoveReservation(street)}
+                      deleteIcon={<Close />}
                     />
                   </motion.div>
                 ))}

@@ -237,14 +237,9 @@ def leaderboard_direct():
         if not event:
             return {"topStudents": [], "topClasses": [], "topGrades": [], "totalCans": 0}
 
-        # Try to get students with event_id = 1 first, then fallback to all students
-        students = db.query(Student).filter(Student.event_id == 1).all()
-        print(f"DEBUG: Found {len(students)} students for event 1")
-        
-        if len(students) == 0:
-            # Fallback: get all students if none found for event 1
-            students = db.query(Student).all()
-            print(f"DEBUG: No students for event 1, using all {len(students)} students")
+        # Get all students - ignore event_id for now
+        students = db.query(Student).all()
+        print(f"DEBUG: Using all {len(students)} students (ignoring event_id)")
         
         for s in students[:3]:  # Print first 3 students
             print(f"DEBUG: Student {s.first_name} {s.last_name}, event_id: {s.event_id}, total_cans: {s.total_cans}")

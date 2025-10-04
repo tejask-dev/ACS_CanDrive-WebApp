@@ -2,7 +2,7 @@ import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { Container, Typography, Box, Stack, Card, CardContent, Button as MUIButton } from '@mui/material';
 import { PersonAdd, Map, TrendingUp, EmojiEvents, Refresh } from '@mui/icons-material';
-import AcsCanLogo from '@/assets/acs-can-logo.svg';
+// import AcsCanLogo from '@/assets/acs-can-logo.svg';
 // import { Button } from '@/components/ui/button';
 import { useState, useEffect } from 'react';
 import api from '@/services/api';
@@ -170,24 +170,6 @@ const Landing = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
           >
-            {/* ACS Can Logo */}
-            <Box sx={{ mb: 3, display: 'flex', justifyContent: 'center' }}>
-              <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ duration: 0.6, delay: 0.2 }}
-              >
-                <img 
-                  src={AcsCanLogo} 
-                  alt="ACS Can Drive Logo" 
-                  style={{ 
-                    width: '80px', 
-                    height: '80px',
-                    filter: 'drop-shadow(0 4px 20px rgba(0,0,0,0.3))'
-                  }} 
-                />
-              </motion.div>
-            </Box>
             
             <Typography
               variant="h1"
