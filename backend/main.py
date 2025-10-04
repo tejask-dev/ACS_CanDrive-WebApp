@@ -53,7 +53,7 @@ def debug_admin():
     except Exception as e:
         return {"error": str(e)}
 
-@app.post("/create-admin")
+@app.get("/create-admin")
 def create_admin():
     from database import get_db
     from models import Admin
