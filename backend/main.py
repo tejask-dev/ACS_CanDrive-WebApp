@@ -8,7 +8,11 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Change to frontend URL in prod!
+    allow_origins=[
+        "http://localhost:5173",  # Local development
+        "https://acs-can-drive-webapp.vercel.app",  # Replace with your actual Vercel URL
+        "https://*.vercel.app",  # Allow all Vercel previews
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
