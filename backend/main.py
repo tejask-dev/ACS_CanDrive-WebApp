@@ -78,12 +78,24 @@ def test_students():
         return {"error": str(e)}
 
 @app.get("/api/events/1/students")
-def get_students_direct():
+def get_students_direct(grade: str = None, homeroom: str = None, name: str = None, teacher: str = None):
     from database import get_db
     from models import Student
     try:
         db = next(get_db())
-        students = db.query(Student).filter(Student.event_id == 1).all()
+        query = db.query(Student).filter(Student.event_id == 1)
+        
+        # Apply filters
+        if grade:
+            query = query.filter(Student.grade == int(grade))
+        if homeroom:
+            query = query.filter(Student.homeroom_number.ilike(f"%{homeroom}%"))
+        if name:
+            query = query.filter((Student.first_name + " " + Student.last_name).ilike(f"%{name}%"))
+        if teacher:
+            query = query.filter(Student.homeroom_teacher.ilike(f"%{teacher}%"))
+        
+        students = query.all()
         return [
             {
                 "id": s.id,
