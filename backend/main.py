@@ -79,6 +79,10 @@ def test_students(grade: str = None, homeroom: str = None, name: str = None, tea
         return {"error": str(e)}
 
 
+@app.get("/test-students")
+def test_students():
+    return {"message": "Students endpoint test", "status": "working"}
+
 @app.get("/debug/students")
 def debug_students():
     from database import get_db
