@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from database import init_db
 from routers import admin, events, students, donations, map_reservations
+import os
 
 app = FastAPI()
 
