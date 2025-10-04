@@ -45,7 +45,7 @@ app.include_router(admin.router, prefix="/api/auth", tags=["auth"])
 app.include_router(events.router, prefix="/api/events", tags=["events"])
 # app.include_router(students.router, prefix="/api/events/{event_id}/students", tags=["students"])  # Temporarily disabled due to route conflict
 app.include_router(donations.router, prefix="/api/events/{event_id}/donations", tags=["donations"])
-app.include_router(map_reservations.router, prefix="/api/events/{event_id}/map-reservations", tags=["map"])
+# app.include_router(map_reservations.router, prefix="/api/events/{event_id}/map-reservations", tags=["map"])  # Temporarily disabled due to route conflict
 
 @app.get("/")
 def read_root():
