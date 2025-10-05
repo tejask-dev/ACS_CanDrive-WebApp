@@ -667,18 +667,6 @@ const Landing = () => {
             transition={{ delay: 1.0 }}
           >
             <Box sx={{ mt: 6, mb: 4 }}>
-              <Typography
-                variant="h4"
-                sx={{
-                  fontWeight: 700,
-                  color: 'white',
-                  textAlign: 'center',
-                  mb: 4,
-                  textShadow: '0 2px 4px rgba(0,0,0,0.3)',
-                }}
-              >
-                🏆 Top Donors of the Day
-              </Typography>
               <DailyDonors />
             </Box>
           </motion.div>

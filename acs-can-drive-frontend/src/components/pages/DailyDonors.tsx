@@ -47,7 +47,9 @@ const DailyDonors = () => {
 
   const loadDailyDonors = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.EVENTS.DAILY_DONORS('1')}`);
+      // Add cache-busting parameter
+      const cacheBuster = new Date().getTime();
+      const response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.EVENTS.DAILY_DONORS('1')}?t=${cacheBuster}`);
       if (response.ok) {
         const data = await response.json();
         setData(data);
