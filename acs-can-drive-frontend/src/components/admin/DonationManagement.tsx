@@ -32,7 +32,7 @@ const DonationManagement = () => {
     setQuery(text);
     if (text.length < 2) return;
     try {
-      const res = await api.get(`${API_BASE_URL}/api/events/1/teachers`);
+      const res = await api.get(API_ENDPOINTS.EVENTS.TEACHERS('1'));
       const teachers = res.data.filter((teacher: any) => 
         teacher.full_name.toLowerCase().includes(text.toLowerCase())
       );

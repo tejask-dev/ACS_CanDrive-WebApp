@@ -17,7 +17,7 @@ import {
   Button,
 } from '@mui/material';
 import { Refresh, EmojiEvents, School } from '@mui/icons-material';
-import { API_BASE_URL } from '@/components/config/api';
+import { API_BASE_URL, API_ENDPOINTS } from '@/components/config/api';
 
 interface DailyDonor {
   id: number;
@@ -47,7 +47,7 @@ const DailyDonors = () => {
 
   const loadDailyDonors = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/events/1/daily-donors`);
+      const response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.EVENTS.DAILY_DONORS('1')}`);
       if (response.ok) {
         const data = await response.json();
         setData(data);

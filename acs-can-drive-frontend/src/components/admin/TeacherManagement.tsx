@@ -31,7 +31,7 @@ import {
   Refresh,
 } from '@mui/icons-material';
 import { toast } from 'sonner';
-import { API_BASE_URL } from '@/components/config/api';
+import { API_BASE_URL, API_ENDPOINTS } from '@/components/config/api';
 
 interface Teacher {
   id: number;
@@ -54,7 +54,7 @@ const TeacherManagement = () => {
   const fetchTeachers = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/api/events/1/teachers`);
+      const response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.EVENTS.TEACHERS('1')}`);
       if (response.ok) {
         const data = await response.json();
         setTeachers(data);
@@ -81,7 +81,7 @@ const TeacherManagement = () => {
       const formData = new FormData();
       formData.append('file', file);
 
-      const response = await fetch(`${API_BASE_URL}/api/events/1/upload-teachers`, {
+      const response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.EVENTS.UPLOAD_TEACHERS('1')}`, {
         method: 'POST',
         body: formData,
       });
