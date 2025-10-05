@@ -264,28 +264,104 @@ def test_leaderboard():
 
 @app.get("/api/events/1/leaderboard")
 def leaderboard_direct():
-    # TEMPORARY HARDCODED LEADERBOARD FOR PRESENTATION
-    return {
-        "topStudents": [
-            {"rank": 1, "name": "Uriel Pangilinan", "grade": 12, "homeroomNumber": "11", "totalCans": 12},
-            {"rank": 2, "name": "Mohid Aaqib", "grade": 11, "homeroomNumber": "204", "totalCans": 8},
-            {"rank": 3, "name": "Ishaq Abdirahman", "grade": 9, "homeroomNumber": "P6", "totalCans": 5},
-            {"rank": 4, "name": "Test Student 1", "grade": 10, "homeroomNumber": "101", "totalCans": 3},
-            {"rank": 5, "name": "Test Student 2", "grade": 12, "homeroomNumber": "102", "totalCans": 2}
-        ],
-        "topClasses": [
-            {"rank": 1, "name": "Ianni, J 11", "homeroomNumber": "11", "totalCans": 12},
-            {"rank": 2, "name": "Pearce, K 204", "homeroomNumber": "204", "totalCans": 8},
-            {"rank": 3, "name": "Papac, D P6", "homeroomNumber": "P6", "totalCans": 5}
-        ],
-        "topGrades": [
-            {"rank": 1, "grade": 12, "totalCans": 14},
-            {"rank": 2, "grade": 11, "totalCans": 8},
-            {"rank": 3, "grade": 9, "totalCans": 5},
-            {"rank": 4, "grade": 10, "totalCans": 3}
-        ],
-        "totalCans": 30
-    }
+    from database import get_db
+    from models import Event, Student
+    from collections import defaultdict
+    try:
+        print("DEBUG: Starting leaderboard calculation...")
+        db = next(get_db())
+        
+        # Get all students - ignore event_id for now
+        students = db.query(Student).all()
+        print(f"DEBUG: Found {len(students)} students in database")
+        
+        if len(students) == 0:
+            print("DEBUG: No students found in database!")
+            return {"topStudents": [], "topClasses": [], "topGrades": [], "totalCans": 0}
+        
+        # Print first few students for debugging
+        for i, s in enumerate(students[:3]):
+            print(f"DEBUG: Student {i+1}: {s.first_name} {s.last_name}, grade: {s.grade}, total_cans: {s.total_cans}, event_id: {s.event_id}")
+
+        # Calculate total cans
+        total_cans = sum(int(s.total_cans or 0) for s in students)
+        print(f"DEBUG: Total cans across all students: {total_cans}")
+
+        # Top students - show all students even with 0 cans
+        sorted_students = sorted(students, key=lambda s: int(s.total_cans or 0), reverse=True)
+        print(f"DEBUG: Sorted {len(sorted_students)} students by total_cans")
+        
+        top_students = []
+        for idx, s in enumerate(sorted_students[:50]):
+            student_data = {
+                "rank": idx + 1,
+                "name": f"{s.first_name} {s.last_name}".strip(),
+                "grade": int(s.grade) if (s.grade and str(s.grade).replace('.', '').isdigit()) else s.grade,
+                "homeroomNumber": s.homeroom_number,
+                "totalCans": int(s.total_cans or 0),
+            }
+            top_students.append(student_data)
+            if idx < 3:  # Print first 3 for debugging
+                print(f"DEBUG: Top student {idx+1}: {student_data}")
+        
+        print(f"DEBUG: Created {len(top_students)} top students")
+
+        # Top classes: group by homeroom teacher + number
+        class_totals = defaultdict(int)
+        for s in students:
+            key = (s.homeroom_teacher or "", s.homeroom_number or "")
+            class_totals[key] += int(s.total_cans or 0)
+        
+        sorted_classes = sorted(class_totals.items(), key=lambda kv: kv[1], reverse=True)
+        top_classes = []
+        for idx, ((teacher, room), total) in enumerate(sorted_classes[:50]):
+            class_data = {
+                "rank": idx + 1,
+                "name": f"{teacher} {room}".strip(),
+                "homeroomNumber": room,
+                "totalCans": total,
+            }
+            top_classes.append(class_data)
+            if idx < 3:  # Print first 3 for debugging
+                print(f"DEBUG: Top class {idx+1}: {class_data}")
+        
+        print(f"DEBUG: Created {len(top_classes)} top classes")
+
+        # Top grades
+        grade_totals = defaultdict(int)
+        for s in students:
+            grade_key = str(s.grade or '').strip()
+            grade_totals[grade_key] += int(s.total_cans or 0)
+        
+        sorted_grades = sorted(grade_totals.items(), key=lambda kv: kv[1], reverse=True)
+        top_grades = []
+        for idx, (grade, total) in enumerate(sorted_grades[:50]):
+            grade_data = {
+                "rank": idx + 1,
+                "grade": (int(grade) if grade.isdigit() else grade),
+                "totalCans": total,
+            }
+            top_grades.append(grade_data)
+            if idx < 3:  # Print first 3 for debugging
+                print(f"DEBUG: Top grade {idx+1}: {grade_data}")
+        
+        print(f"DEBUG: Created {len(top_grades)} top grades")
+
+        result = {
+            "topStudents": top_students,
+            "topClasses": top_classes,
+            "topGrades": top_grades,
+            "totalCans": total_cans,
+        }
+        
+        print(f"DEBUG: Returning leaderboard with {len(top_students)} students, {len(top_classes)} classes, {len(top_grades)} grades, totalCans: {total_cans}")
+        return result
+        
+    except Exception as e:
+        print(f"DEBUG: Error in leaderboard calculation: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return {"error": str(e)}
 
 @app.get("/api/events/1/donations")
 def list_donations_direct():
