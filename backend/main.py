@@ -353,26 +353,30 @@ def test_leaderboard():
 def get_leaderboard():
     """Get leaderboard data for event 1"""
     from database import get_db
-    from models import Student
+    from models import Student, Teacher
     from collections import defaultdict
     
     try:
         # Get database connection
         db = next(get_db())
         
-        # Get all students for event 1
+        # Get all students and teachers for event 1
         students = db.query(Student).filter(Student.event_id == 1).all()
+        teachers = db.query(Teacher).filter(Teacher.event_id == 1).all()
         
-        if not students:
+        if not students and not teachers:
             return {
                 "topStudents": [],
                 "topClasses": [],
                 "topGrades": [],
+                "topTeachers": [],
                 "totalCans": 0
             }
         
-        # Calculate total cans
-        total_cans = sum(student.total_cans or 0 for student in students)
+        # Calculate total cans from students and teachers
+        student_cans = sum(student.total_cans or 0 for student in students)
+        teacher_cans = sum(teacher.total_cans or 0 for teacher in teachers)
+        total_cans = student_cans + teacher_cans
         
         # Top Students - sort by total_cans descending
         students_sorted = sorted(students, key=lambda s: s.total_cans or 0, reverse=True)
@@ -386,11 +390,31 @@ def get_leaderboard():
                 "totalCans": student.total_cans or 0
             })
         
-        # Top Classes - group by teacher and homeroom
+        # Top Teachers - sort by total_cans descending
+        teachers_sorted = sorted(teachers, key=lambda t: t.total_cans or 0, reverse=True)
+        top_teachers = []
+        for i, teacher in enumerate(teachers_sorted[:50]):
+            top_teachers.append({
+                "rank": i + 1,
+                "name": teacher.full_name or f"{teacher.first_name} {teacher.last_name}".strip(),
+                "homeroomNumber": teacher.homeroom_number,
+                "totalCans": teacher.total_cans or 0
+            })
+        
+        # Top Classes - group by teacher and homeroom (students + teachers with homerooms)
         class_groups = defaultdict(int)
+        
+        # Add student contributions to their classes
         for student in students:
-            key = f"{student.homeroom_teacher or ''} {student.homeroom_number or ''}".strip()
-            class_groups[key] += student.total_cans or 0
+            if student.homeroom_teacher and student.homeroom_number:
+                key = f"{student.homeroom_teacher} {student.homeroom_number}".strip()
+                class_groups[key] += student.total_cans or 0
+        
+        # Add teacher contributions to their homerooms
+        for teacher in teachers:
+            if teacher.homeroom_number:
+                key = f"{teacher.full_name} {teacher.homeroom_number}".strip()
+                class_groups[key] += teacher.total_cans or 0
         
         classes_sorted = sorted(class_groups.items(), key=lambda x: x[1], reverse=True)
         top_classes = []
@@ -407,7 +431,7 @@ def get_leaderboard():
                 "totalCans": cans
             })
         
-        # Top Grades - group by grade
+        # Top Grades - group by grade (students only)
         grade_groups = defaultdict(int)
         for student in students:
             grade = str(student.grade or '').strip()
@@ -426,6 +450,7 @@ def get_leaderboard():
             "topStudents": top_students,
             "topClasses": top_classes,
             "topGrades": top_grades,
+            "topTeachers": top_teachers,
             "totalCans": total_cans
         }
         
@@ -435,6 +460,7 @@ def get_leaderboard():
             "topStudents": [],
             "topClasses": [],
             "topGrades": [],
+            "topTeachers": [],
             "totalCans": 0,
             "error": str(e)
         }
@@ -453,7 +479,7 @@ def list_donations_direct():
 @app.post("/api/events/1/donations")
 def add_donation_direct(payload: dict):
     from database import get_db
-    from models import Donation, Student
+    from models import Donation, Student, Teacher
     try:
         db = next(get_db())
         
@@ -461,21 +487,36 @@ def add_donation_direct(payload: dict):
         donation = Donation(
             event_id=1,
             student_id=payload.get('student_id'),
+            teacher_id=payload.get('teacher_id'),
             amount=payload.get('amount', 0)
         )
         
         db.add(donation)
         
-        # Increment student's total_cans
-        student = db.query(Student).filter(
-            Student.id == payload.get('student_id'), 
-            Student.event_id == 1
-        ).first()
-        
-        if student:
-            student.total_cans = (student.total_cans or 0) + payload.get('amount', 0)
+        # Update total_cans for student or teacher
+        if payload.get('student_id'):
+            student = db.query(Student).filter(
+                Student.id == payload.get('student_id'), 
+                Student.event_id == 1
+            ).first()
+            
+            if student:
+                student.total_cans = (student.total_cans or 0) + payload.get('amount', 0)
+            else:
+                return {"error": "Student not found"}
+                
+        elif payload.get('teacher_id'):
+            teacher = db.query(Teacher).filter(
+                Teacher.id == payload.get('teacher_id'), 
+                Teacher.event_id == 1
+            ).first()
+            
+            if teacher:
+                teacher.total_cans = (teacher.total_cans or 0) + payload.get('amount', 0)
+            else:
+                return {"error": "Teacher not found"}
         else:
-            return {"error": "Student not found"}
+            return {"error": "Either student_id or teacher_id must be provided"}
         
         db.commit()
         db.refresh(donation)
@@ -700,11 +741,186 @@ async def upload_roster_direct(file: UploadFile = File(...)):
     except Exception as e:
         return {"error": str(e)}
 
+@app.post("/api/events/1/upload-teachers")
+async def upload_teachers_direct(file: UploadFile = File(...)):
+    """Upload teachers Excel file"""
+    from database import get_db
+    from models import Teacher, Student
+    import openpyxl
+    from io import BytesIO
+    try:
+        db = next(get_db())
+        content = await file.read()
+        wb = openpyxl.load_workbook(BytesIO(content), data_only=True)
+        sheet = wb.active
+        added = 0
+        
+        # Get existing teachers from student data
+        existing_teachers = set()
+        students = db.query(Student).filter(Student.event_id == 1).all()
+        for student in students:
+            if student.homeroom_teacher:
+                existing_teachers.add(student.homeroom_teacher.strip())
+        
+        for i, row in enumerate(sheet.iter_rows(values_only=True)):
+            if i == 0:  # Skip header
+                continue
+                
+            teacher_name = str(row[0]).strip() if row[0] else None
+            if not teacher_name:
+                continue
+            
+            # Parse teacher name
+            if ',' in teacher_name:
+                parts = [p.strip() for p in teacher_name.split(',', 1)]
+                if len(parts) == 2:
+                    last_name, first_name = parts[0], parts[1]
+                else:
+                    first_name = teacher_name
+                    last_name = ""
+            else:
+                parts = [p.strip() for p in teacher_name.split(' ') if p.strip()]
+                if len(parts) >= 2:
+                    first_name = parts[0]
+                    last_name = ' '.join(parts[1:])
+                else:
+                    first_name = teacher_name
+                    last_name = ""
+            
+            # Check if teacher already exists
+            existing_teacher = db.query(Teacher).filter(
+                Teacher.event_id == 1,
+                Teacher.first_name == first_name,
+                Teacher.last_name == last_name
+            ).first()
+            
+            if existing_teacher:
+                continue
+            
+            # Check if this teacher has a homeroom from student data
+            homeroom_number = None
+            for student in students:
+                if student.homeroom_teacher and student.homeroom_teacher.strip() == teacher_name:
+                    homeroom_number = student.homeroom_number
+                    break
+            
+            teacher = Teacher(
+                first_name=first_name,
+                last_name=last_name,
+                full_name=teacher_name,
+                event_id=1,
+                homeroom_number=homeroom_number
+            )
+            db.add(teacher)
+            added += 1
+        
+        db.commit()
+        return {"added": added, "message": f"Added {added} new teachers"}
+    except Exception as e:
+        return {"error": str(e)}
+
+@app.get("/api/events/1/daily-donors")
+def get_daily_donors():
+    """Get top donors of the day"""
+    from database import get_db
+    from models import Donation, Student, Teacher
+    from datetime import datetime, date
+    from collections import defaultdict
+    
+    try:
+        db = next(get_db())
+        
+        # Get today's date
+        today = date.today()
+        
+        # Get donations for today
+        today_donations = db.query(Donation).filter(
+            Donation.event_id == 1,
+            Donation.donation_date >= datetime.combine(today, datetime.min.time()),
+            Donation.donation_date < datetime.combine(today, datetime.max.time())
+        ).all()
+        
+        # Group donations by student/teacher and sum amounts
+        student_daily = defaultdict(int)
+        teacher_daily = defaultdict(int)
+        
+        for donation in today_donations:
+            if donation.student_id:
+                student_daily[donation.student_id] += donation.amount or 0
+            elif donation.teacher_id:
+                teacher_daily[donation.teacher_id] += donation.amount or 0
+        
+        # Get top 10 students for today
+        top_students = []
+        if student_daily:
+            students = db.query(Student).filter(
+                Student.id.in_(student_daily.keys()),
+                Student.event_id == 1
+            ).all()
+            
+            student_rankings = []
+            for student in students:
+                daily_amount = student_daily[student.id]
+                student_rankings.append({
+                    "id": student.id,
+                    "name": f"{student.first_name} {student.last_name}".strip(),
+                    "dailyCans": daily_amount,
+                    "grade": student.grade,
+                    "homeroomNumber": student.homeroom_number
+                })
+            
+            student_rankings.sort(key=lambda x: x["dailyCans"], reverse=True)
+            top_students = student_rankings[:10]
+            
+            # Add rank
+            for i, student in enumerate(top_students):
+                student["rank"] = i + 1
+        
+        # Get top 10 teachers for today
+        top_teachers = []
+        if teacher_daily:
+            teachers = db.query(Teacher).filter(
+                Teacher.id.in_(teacher_daily.keys()),
+                Teacher.event_id == 1
+            ).all()
+            
+            teacher_rankings = []
+            for teacher in teachers:
+                daily_amount = teacher_daily[teacher.id]
+                teacher_rankings.append({
+                    "id": teacher.id,
+                    "name": teacher.full_name or f"{teacher.first_name} {teacher.last_name}".strip(),
+                    "dailyCans": daily_amount,
+                    "homeroomNumber": teacher.homeroom_number
+                })
+            
+            teacher_rankings.sort(key=lambda x: x["dailyCans"], reverse=True)
+            top_teachers = teacher_rankings[:10]
+            
+            # Add rank
+            for i, teacher in enumerate(top_teachers):
+                teacher["rank"] = i + 1
+        
+        return {
+            "date": today.isoformat(),
+            "topStudents": top_students,
+            "topTeachers": top_teachers
+        }
+        
+    except Exception as e:
+        print(f"Daily donors error: {e}")
+        return {
+            "date": date.today().isoformat(),
+            "topStudents": [],
+            "topTeachers": [],
+            "error": str(e)
+        }
+
 @app.delete("/api/events/1/reset")
 def reset_event_direct():
     """Reset all data for event 1"""
     from database import get_db
-    from models import Student, Donation, MapReservation
+    from models import Student, Donation, MapReservation, Teacher
     try:
         db = next(get_db())
         
@@ -712,6 +928,7 @@ def reset_event_direct():
         db.query(MapReservation).filter(MapReservation.event_id == 1).delete()
         db.query(Donation).filter(Donation.event_id == 1).delete()
         db.query(Student).filter(Student.event_id == 1).delete()
+        db.query(Teacher).filter(Teacher.event_id == 1).delete()
         
         db.commit()
         return {"status": "ok", "message": "All data for event 1 has been reset"}

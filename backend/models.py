@@ -32,13 +32,28 @@ class Student(Base):
 class Donation(Base):
     __tablename__ = "donations"
     id = Column(Integer, primary_key=True, index=True)
-    student_id = Column(Integer, ForeignKey("students.id"))
+    student_id = Column(Integer, ForeignKey("students.id"), nullable=True)
+    teacher_id = Column(Integer, ForeignKey("teachers.id"), nullable=True)
     event_id = Column(Integer, ForeignKey("events.id"))
     admin_id = Column(Integer, ForeignKey("admins.id"))
     amount = Column(Integer)
     note = Column(Text, nullable=True)
     timestamp = Column(DateTime, default=datetime.datetime.utcnow)
+    donation_date = Column(DateTime, default=datetime.datetime.utcnow)  # For daily tracking
     event = relationship("Event", back_populates="donations")
+
+class Teacher(Base):
+    __tablename__ = "teachers"
+    id = Column(Integer, primary_key=True, index=True)
+    first_name = Column(String)
+    last_name = Column(String)
+    full_name = Column(String)  # For display purposes
+    event_id = Column(Integer, ForeignKey("events.id"))
+    total_cans = Column(Integer, default=0)
+    homeroom_number = Column(String, nullable=True)  # Only if they have a homeroom
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+    event = relationship("Event")
 
 class Admin(Base):
     __tablename__ = "admins"
