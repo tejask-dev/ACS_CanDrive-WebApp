@@ -350,95 +350,94 @@ def test_leaderboard():
     }
 
 @app.get("/api/events/1/leaderboard")
-def leaderboard_direct():
+def get_leaderboard():
+    """Get leaderboard data for event 1"""
     from database import get_db
     from models import Student
     from collections import defaultdict
+    
     try:
-        print("DEBUG: Starting leaderboard calculation...")
+        # Get database connection
         db = next(get_db())
-        students = db.query(Student).all()
-        print(f"DEBUG: Found {len(students)} students")
         
-        if len(students) == 0:
-            return {"topStudents": [], "topClasses": [], "topGrades": [], "totalCans": 0}
+        # Get all students for event 1
+        students = db.query(Student).filter(Student.event_id == 1).all()
+        
+        if not students:
+            return {
+                "topStudents": [],
+                "topClasses": [],
+                "topGrades": [],
+                "totalCans": 0
+            }
         
         # Calculate total cans
-        total_cans = sum(int(s.total_cans or 0) for s in students)
-        print(f"DEBUG: Total cans: {total_cans}")
+        total_cans = sum(student.total_cans or 0 for student in students)
         
-        if total_cans == 0:
-            print("DEBUG: All students have 0 cans!")
-
-        # Top students - show all students even with 0 cans
-        sorted_students = sorted(students, key=lambda s: int(s.total_cans or 0), reverse=True)
-        top_students = [
-            {
-                "rank": idx + 1,
-                "name": f"{s.first_name} {s.last_name}".strip(),
-                "grade": s.grade,
-                "homeroomNumber": s.homeroom_number,
-                "totalCans": int(s.total_cans or 0),
-            }
-            for idx, s in enumerate(sorted_students[:50])
-        ]
+        # Top Students - sort by total_cans descending
+        students_sorted = sorted(students, key=lambda s: s.total_cans or 0, reverse=True)
+        top_students = []
+        for i, student in enumerate(students_sorted[:50]):
+            top_students.append({
+                "rank": i + 1,
+                "name": f"{student.first_name} {student.last_name}".strip(),
+                "grade": student.grade,
+                "homeroomNumber": student.homeroom_number,
+                "totalCans": student.total_cans or 0
+            })
         
-        print(f"DEBUG: Created {len(top_students)} top students")
-        if len(top_students) > 0:
-            print(f"DEBUG: First student: {top_students[0]}")
-
-        # Top classes: group by homeroom teacher + number
-        class_totals = defaultdict(int)
-        for s in students:
-            key = (s.homeroom_teacher or "", s.homeroom_number or "")
-            class_totals[key] += int(s.total_cans or 0)
+        # Top Classes - group by teacher and homeroom
+        class_groups = defaultdict(int)
+        for student in students:
+            key = f"{student.homeroom_teacher or ''} {student.homeroom_number or ''}".strip()
+            class_groups[key] += student.total_cans or 0
         
-        sorted_classes = sorted(class_totals.items(), key=lambda kv: kv[1], reverse=True)
-        top_classes = [
-            {
-                "rank": idx + 1,
-                "name": f"{teacher} {room}".strip(),
+        classes_sorted = sorted(class_groups.items(), key=lambda x: x[1], reverse=True)
+        top_classes = []
+        for i, (class_name, cans) in enumerate(classes_sorted[:50]):
+            # Split class name back into teacher and room
+            parts = class_name.split(' ', 1)
+            teacher = parts[0] if parts else ""
+            room = parts[1] if len(parts) > 1 else ""
+            
+            top_classes.append({
+                "rank": i + 1,
+                "name": class_name,
                 "homeroomNumber": room,
-                "totalCans": total,
-            }
-            for idx, ((teacher, room), total) in enumerate(sorted_classes[:50])
-        ]
+                "totalCans": cans
+            })
         
-        print(f"DEBUG: Created {len(top_classes)} top classes")
-
-        # Top grades
-        grade_totals = defaultdict(int)
-        for s in students:
-            grade_key = str(s.grade or '').strip()
-            grade_totals[grade_key] += int(s.total_cans or 0)
+        # Top Grades - group by grade
+        grade_groups = defaultdict(int)
+        for student in students:
+            grade = str(student.grade or '').strip()
+            grade_groups[grade] += student.total_cans or 0
         
-        sorted_grades = sorted(grade_totals.items(), key=lambda kv: kv[1], reverse=True)
-        top_grades = [
-            {
-                "rank": idx + 1,
-                "grade": g,
-                "totalCans": total,
-            }
-            for idx, (g, total) in enumerate(sorted_grades[:50])
-        ]
+        grades_sorted = sorted(grade_groups.items(), key=lambda x: x[1], reverse=True)
+        top_grades = []
+        for i, (grade, cans) in enumerate(grades_sorted[:50]):
+            top_grades.append({
+                "rank": i + 1,
+                "grade": grade,
+                "totalCans": cans
+            })
         
-        print(f"DEBUG: Created {len(top_grades)} top grades")
-
-        result = {
+        return {
             "topStudents": top_students,
             "topClasses": top_classes,
             "topGrades": top_grades,
-            "totalCans": total_cans,
+            "totalCans": total_cans
         }
         
-        print(f"DEBUG: Returning leaderboard with {len(top_students)} students, {len(top_classes)} classes, {len(top_grades)} grades")
-        return result
-        
     except Exception as e:
-        print(f"DEBUG: Error in leaderboard calculation: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        return {"error": str(e)}
+        print(f"Leaderboard error: {e}")
+        return {
+            "topStudents": [],
+            "topClasses": [],
+            "topGrades": [],
+            "totalCans": 0,
+            "error": str(e)
+        }
 
 @app.get("/api/events/1/donations")
 def list_donations_direct():
