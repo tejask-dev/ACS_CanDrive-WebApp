@@ -352,44 +352,33 @@ def test_leaderboard():
 @app.get("/api/events/1/leaderboard")
 def leaderboard_direct():
     from database import get_db
-    from models import Event, Student
+    from models import Student
     from collections import defaultdict
     try:
         print("DEBUG: Starting leaderboard calculation...")
         db = next(get_db())
-        
-        # Get all students - ignore event_id for now
         students = db.query(Student).all()
-        print(f"DEBUG: Found {len(students)} students in database")
+        print(f"DEBUG: Found {len(students)} students")
         
         if len(students) == 0:
-            print("DEBUG: No students found in database!")
             return {"topStudents": [], "topClasses": [], "topGrades": [], "totalCans": 0}
         
-        # Print first few students for debugging
-        for i, s in enumerate(students[:3]):
-            print(f"DEBUG: Student {i+1}: {s.first_name} {s.last_name}, grade: {s.grade}, total_cans: {s.total_cans}, event_id: {s.event_id}")
-
         # Calculate total cans
         total_cans = sum(int(s.total_cans or 0) for s in students)
-        print(f"DEBUG: Total cans across all students: {total_cans}")
-
+        print(f"DEBUG: Total cans: {total_cans}")
+        
         # Top students - show all students even with 0 cans
         sorted_students = sorted(students, key=lambda s: int(s.total_cans or 0), reverse=True)
-        print(f"DEBUG: Sorted {len(sorted_students)} students by total_cans")
-        
         top_students = []
         for idx, s in enumerate(sorted_students[:50]):
             student_data = {
                 "rank": idx + 1,
                 "name": f"{s.first_name} {s.last_name}".strip(),
-                "grade": int(s.grade) if (s.grade and str(s.grade).replace('.', '').isdigit()) else s.grade,
+                "grade": s.grade,  # Keep as string to avoid conversion issues
                 "homeroomNumber": s.homeroom_number,
                 "totalCans": int(s.total_cans or 0),
             }
             top_students.append(student_data)
-            if idx < 3:  # Print first 3 for debugging
-                print(f"DEBUG: Top student {idx+1}: {student_data}")
         
         print(f"DEBUG: Created {len(top_students)} top students")
 
@@ -409,8 +398,6 @@ def leaderboard_direct():
                 "totalCans": total,
             }
             top_classes.append(class_data)
-            if idx < 3:  # Print first 3 for debugging
-                print(f"DEBUG: Top class {idx+1}: {class_data}")
         
         print(f"DEBUG: Created {len(top_classes)} top classes")
 
@@ -425,12 +412,10 @@ def leaderboard_direct():
         for idx, (grade, total) in enumerate(sorted_grades[:50]):
             grade_data = {
                 "rank": idx + 1,
-                "grade": (int(grade) if grade.isdigit() else grade),
+                "grade": grade,  # Keep as string to avoid conversion issues
                 "totalCans": total,
             }
             top_grades.append(grade_data)
-            if idx < 3:  # Print first 3 for debugging
-                print(f"DEBUG: Top grade {idx+1}: {grade_data}")
         
         print(f"DEBUG: Created {len(top_grades)} top grades")
 
