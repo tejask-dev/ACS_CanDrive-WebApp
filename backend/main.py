@@ -367,20 +367,25 @@ def leaderboard_direct():
         total_cans = sum(int(s.total_cans or 0) for s in students)
         print(f"DEBUG: Total cans: {total_cans}")
         
+        if total_cans == 0:
+            print("DEBUG: All students have 0 cans!")
+
         # Top students - show all students even with 0 cans
         sorted_students = sorted(students, key=lambda s: int(s.total_cans or 0), reverse=True)
-        top_students = []
-        for idx, s in enumerate(sorted_students[:50]):
-            student_data = {
+        top_students = [
+            {
                 "rank": idx + 1,
                 "name": f"{s.first_name} {s.last_name}".strip(),
-                "grade": s.grade,  # Keep as string to avoid conversion issues
+                "grade": s.grade,
                 "homeroomNumber": s.homeroom_number,
                 "totalCans": int(s.total_cans or 0),
             }
-            top_students.append(student_data)
+            for idx, s in enumerate(sorted_students[:50])
+        ]
         
         print(f"DEBUG: Created {len(top_students)} top students")
+        if len(top_students) > 0:
+            print(f"DEBUG: First student: {top_students[0]}")
 
         # Top classes: group by homeroom teacher + number
         class_totals = defaultdict(int)
@@ -389,15 +394,15 @@ def leaderboard_direct():
             class_totals[key] += int(s.total_cans or 0)
         
         sorted_classes = sorted(class_totals.items(), key=lambda kv: kv[1], reverse=True)
-        top_classes = []
-        for idx, ((teacher, room), total) in enumerate(sorted_classes[:50]):
-            class_data = {
+        top_classes = [
+            {
                 "rank": idx + 1,
                 "name": f"{teacher} {room}".strip(),
                 "homeroomNumber": room,
                 "totalCans": total,
             }
-            top_classes.append(class_data)
+            for idx, ((teacher, room), total) in enumerate(sorted_classes[:50])
+        ]
         
         print(f"DEBUG: Created {len(top_classes)} top classes")
 
@@ -408,14 +413,14 @@ def leaderboard_direct():
             grade_totals[grade_key] += int(s.total_cans or 0)
         
         sorted_grades = sorted(grade_totals.items(), key=lambda kv: kv[1], reverse=True)
-        top_grades = []
-        for idx, (grade, total) in enumerate(sorted_grades[:50]):
-            grade_data = {
+        top_grades = [
+            {
                 "rank": idx + 1,
-                "grade": grade,  # Keep as string to avoid conversion issues
+                "grade": g,
                 "totalCans": total,
             }
-            top_grades.append(grade_data)
+            for idx, (g, total) in enumerate(sorted_grades[:50])
+        ]
         
         print(f"DEBUG: Created {len(top_grades)} top grades")
 
@@ -426,7 +431,7 @@ def leaderboard_direct():
             "totalCans": total_cans,
         }
         
-        print(f"DEBUG: Returning leaderboard with {len(top_students)} students, {len(top_classes)} classes, {len(top_grades)} grades, totalCans: {total_cans}")
+        print(f"DEBUG: Returning leaderboard with {len(top_students)} students, {len(top_classes)} classes, {len(top_grades)} grades")
         return result
         
     except Exception as e:
