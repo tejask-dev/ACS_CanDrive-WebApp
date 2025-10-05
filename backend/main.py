@@ -224,6 +224,29 @@ def verify_student_direct(payload: dict):
     except Exception as e:
         return {"error": str(e)}
 
+@app.get("/debug/students")
+def debug_students():
+    from database import get_db
+    from models import Student
+    try:
+        db = next(get_db())
+        students = db.query(Student).all()
+        print(f"DEBUG: Found {len(students)} total students")
+        for s in students[:5]:  # Print first 5 students
+            print(f"DEBUG: Student {s.first_name} {s.last_name}, event_id: {s.event_id}, total_cans: {s.total_cans}")
+        return {
+            "total_students": len(students),
+            "students": [
+                {
+                    "name": f"{s.first_name} {s.last_name}",
+                    "event_id": s.event_id,
+                    "total_cans": s.total_cans
+                } for s in students[:10]
+            ]
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
 @app.get("/api/events/1/leaderboard")
 def leaderboard_direct():
     from database import get_db
@@ -241,12 +264,19 @@ def leaderboard_direct():
         students = db.query(Student).all()
         print(f"DEBUG: Using all {len(students)} students (ignoring event_id)")
         
+        if len(students) == 0:
+            print("DEBUG: No students found!")
+            return {"topStudents": [], "topClasses": [], "topGrades": [], "totalCans": 0}
+        
         for s in students[:3]:  # Print first 3 students
             print(f"DEBUG: Student {s.first_name} {s.last_name}, event_id: {s.event_id}, total_cans: {s.total_cans}")
 
         # Total cans overall
         total_cans = sum(int(s.total_cans or 0) for s in students)
         print(f"DEBUG: Total cans: {total_cans}")
+        
+        if total_cans == 0:
+            print("DEBUG: All students have 0 cans!")
 
         # Top students
         sorted_students = sorted(students, key=lambda s: int(s.total_cans or 0), reverse=True)

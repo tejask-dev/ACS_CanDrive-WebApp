@@ -193,12 +193,16 @@ const MapReservation = ({ eventId, studentId, studentName, groupMembers, onCompl
                 fontWeight: 'bold',
               }}
               icon={{
-                path: google.maps.SymbolPath.CIRCLE,
-                scale: 20,
-                fillColor: (r.studentId || r.student_id || '') == studentId ? '#22c55e' : '#ef4444',
-                fillOpacity: 0.9,
-                strokeColor: 'white',
-                strokeWeight: 2,
+                url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
+                  <svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="20" cy="20" r="18" fill="#ef4444" stroke="white" stroke-width="3"/>
+                    <text x="20" y="26" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" font-weight="bold" fill="white">
+                      ${getInitials(r.studentName || r.name || '')}
+                    </text>
+                  </svg>
+                `),
+                scaledSize: new google.maps.Size(40, 40),
+                anchor: new google.maps.Point(20, 20),
               }}
             />
           );
