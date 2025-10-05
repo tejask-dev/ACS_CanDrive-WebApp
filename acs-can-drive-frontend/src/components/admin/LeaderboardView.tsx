@@ -223,6 +223,7 @@ const LeaderboardView = () => {
             sx={{ borderBottom: 1, borderColor: 'divider' }}
           >
             <Tab label={`Top Students (${data.topStudents.length})`} />
+            <Tab label={`Top Teachers (${data.topTeachers?.length || 0})`} />
             <Tab label={`Top Classes (${data.topClasses.length})`} />
             <Tab label={`Top Grades (${data.topGrades.length})`} />
           </Tabs>
@@ -232,8 +233,9 @@ const LeaderboardView = () => {
             </Typography>
             
             {tabValue === 0 && renderTable(data.topStudents, true)}
-            {tabValue === 1 && renderTable(data.topClasses)}
-            {tabValue === 2 && renderTable(data.topGrades, false, true)}
+            {tabValue === 1 && renderTable(data.topTeachers || [], false)}
+            {tabValue === 2 && renderTable(data.topClasses)}
+            {tabValue === 3 && renderTable(data.topGrades, false, true)}
           </Box>
         </Paper>
       )}

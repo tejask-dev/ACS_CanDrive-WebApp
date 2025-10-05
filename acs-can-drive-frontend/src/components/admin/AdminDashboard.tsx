@@ -32,6 +32,7 @@ import { toast } from 'sonner';
 
 import EventManagement from '@/components/admin/EventManagement';
 import StudentManagement from '@/components/admin/StudentManagement';
+import TeacherManagement from '@/components/admin/TeacherManagement';
 import DonationManagement from '@/components/admin/DonationManagement';
 import LeaderboardView from '@/components/admin/LeaderboardView';
 import MapView from '@/components/admin/MapView';
@@ -55,7 +56,8 @@ const AdminDashboard = () => {
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: <Dashboard /> },
     { id: 'events', label: 'Events', icon: <Event /> },
-    { id: 'students', label: 'Students', icon: <People /> },
+    { id: 'students', label: 'Student Management', icon: <People /> },
+    { id: 'teachers', label: 'Teacher Management', icon: <People /> },
     { id: 'donations', label: 'Donations', icon: <Upload /> },
     { id: 'leaderboard', label: 'Leaderboard', icon: <EmojiEvents /> },
     { id: 'map', label: 'Map Reservations', icon: <Map /> },
@@ -67,6 +69,8 @@ const AdminDashboard = () => {
         return <EventManagement />;
       case 'students':
         return <StudentManagement />;
+      case 'teachers':
+        return <TeacherManagement />;
       case 'donations':
         return <DonationManagement />;
       case 'leaderboard':

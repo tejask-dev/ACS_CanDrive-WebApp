@@ -628,6 +628,28 @@ def get_students_direct(grade: str = None, homeroom: str = None, name: str = Non
     except Exception as e:
         return {"error": str(e)}
 
+@app.get("/api/events/1/teachers")
+def get_teachers_direct():
+    """Get all teachers for event 1"""
+    from database import get_db
+    from models import Teacher
+    try:
+        db = next(get_db())
+        teachers = db.query(Teacher).filter(Teacher.event_id == 1).all()
+        return [
+            {
+                "id": t.id,
+                "first_name": t.first_name,
+                "last_name": t.last_name,
+                "full_name": t.full_name,
+                "homeroom_number": t.homeroom_number,
+                "total_cans": t.total_cans or 0,
+            }
+            for t in teachers
+        ]
+    except Exception as e:
+        return {"error": str(e)}
+
 @app.get("/create-admin")
 def create_admin():
     from database import get_db

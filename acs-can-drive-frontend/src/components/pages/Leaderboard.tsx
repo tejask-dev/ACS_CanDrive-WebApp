@@ -34,6 +34,7 @@ const Leaderboard = () => {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<LeaderboardData>({
     topStudents: [],
+    topTeachers: [],
     topClasses: [],
     topGrades: [],
     totalCans: 0,
@@ -328,14 +329,16 @@ const Leaderboard = () => {
                 }}
               >
                 <Tab icon={<EmojiEvents />} label="Top Students" iconPosition="start" />
+                <Tab icon={<School />} label="Top Teachers" iconPosition="start" />
                 <Tab icon={<School />} label="Top Classes" iconPosition="start" />
                 <Tab icon={<TrendingUp />} label="Top Grades" iconPosition="start" />
               </Tabs>
 
               <Box sx={{ p: 3 }}>
                 {tabValue === 0 && renderTable(data.topStudents, true)}
-                {tabValue === 1 && renderTable(data.topClasses)}
-                {tabValue === 2 && renderTable(data.topGrades, false, true)}
+                {tabValue === 1 && renderTable(data.topTeachers || [], false)}
+                {tabValue === 2 && renderTable(data.topClasses)}
+                {tabValue === 3 && renderTable(data.topGrades, false, true)}
               </Box>
             </Paper>
           </motion.div>

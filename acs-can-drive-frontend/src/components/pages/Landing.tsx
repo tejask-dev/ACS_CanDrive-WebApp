@@ -8,6 +8,7 @@ import { useState, useEffect } from 'react';
 import api from '@/services/api';
 import { API_ENDPOINTS } from '@/config/api';
 import { Badge } from '@/components/ui/badge';
+import DailyDonors from './DailyDonors';
 
 const Landing = () => {
   const navigate = useNavigate();
@@ -656,6 +657,29 @@ const Landing = () => {
                   </CardContent>
                 </Card>
               </Box>
+            </Box>
+          </motion.div>
+
+          {/* Daily Donors Section */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 1.0 }}
+          >
+            <Box sx={{ mt: 6, mb: 4 }}>
+              <Typography
+                variant="h4"
+                sx={{
+                  fontWeight: 700,
+                  color: 'white',
+                  textAlign: 'center',
+                  mb: 4,
+                  textShadow: '0 2px 4px rgba(0,0,0,0.3)',
+                }}
+              >
+                🏆 Top Donors of the Day
+              </Typography>
+              <DailyDonors />
             </Box>
           </motion.div>
 

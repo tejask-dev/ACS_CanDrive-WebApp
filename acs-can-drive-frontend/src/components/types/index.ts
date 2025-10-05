@@ -51,6 +51,7 @@ export interface LeaderboardEntry {
 
 export interface LeaderboardData {
   topStudents: LeaderboardEntry[];
+  topTeachers?: LeaderboardEntry[];
   topClasses: LeaderboardEntry[];
   topGrades: LeaderboardEntry[];
   totalCans: number;
