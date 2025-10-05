@@ -278,7 +278,7 @@ def leaderboard_direct():
         if total_cans == 0:
             print("DEBUG: All students have 0 cans!")
 
-        # Top students
+        # Top students - show all students even with 0 cans
         sorted_students = sorted(students, key=lambda s: int(s.total_cans or 0), reverse=True)
         top_students = [
             {
@@ -290,6 +290,10 @@ def leaderboard_direct():
             }
             for idx, s in enumerate(sorted_students[:50])
         ]
+        
+        print(f"DEBUG: Created {len(top_students)} top students")
+        if len(top_students) > 0:
+            print(f"DEBUG: First student: {top_students[0]}")
 
         # Top classes: group by homeroom teacher + number
         class_totals = defaultdict(int)
@@ -321,12 +325,15 @@ def leaderboard_direct():
             for idx, (g, total) in enumerate(sorted_grades[:50])
         ]
 
-        return {
+        result = {
             "topStudents": top_students,
             "topClasses": top_classes,
             "topGrades": top_grades,
             "totalCans": total_cans,
         }
+        
+        print(f"DEBUG: Returning leaderboard with {len(top_students)} students, {len(top_classes)} classes, {len(top_grades)} grades")
+        return result
     except Exception as e:
         return {"error": str(e)}
 
