@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from database import init_db
 from routers import admin, events, students, donations, map_reservations
@@ -42,7 +42,7 @@ def ensure_admin_user():
 ensure_admin_user()
 
 app.include_router(admin.router, prefix="/api/auth", tags=["auth"])
-app.include_router(events.router, prefix="/api/events", tags=["events"])
+# app.include_router(events.router, prefix="/api/events", tags=["events"])  # Temporarily disabled due to route conflict with direct leaderboard endpoint
 # app.include_router(students.router, prefix="/api/events/{event_id}/students", tags=["students"])  # Temporarily disabled due to route conflict
 # app.include_router(donations.router, prefix="/api/events/{event_id}/donations", tags=["donations"])  # Temporarily disabled due to route conflict
 # app.include_router(map_reservations.router, prefix="/api/events/{event_id}/map-reservations", tags=["map"])  # Temporarily disabled due to route conflict
@@ -611,5 +611,92 @@ def create_admin():
         db.add(admin)
         db.commit()
         return {"message": "Admin user created successfully", "username": "ACS_CanDrive", "password": "Assumption_raiders"}
+    except Exception as e:
+        return {"error": str(e)}
+
+@app.post("/api/events/1/upload-roster")
+async def upload_roster_direct(file: UploadFile = File(...)):
+    from database import get_db
+    from models import Student
+    import openpyxl
+    from io import BytesIO
+    try:
+        db = next(get_db())
+        content = await file.read()
+        wb = openpyxl.load_workbook(BytesIO(content), data_only=True)
+        sheet = wb.active
+        added = 0
+        header_indexes = None
+        for i, row in enumerate(sheet.iter_rows(values_only=True)):
+            # Determine header mapping on first row
+            if i == 0:
+                headers = [str(c).strip().lower() if c is not None else '' for c in row]
+                def find_any(keys):
+                    return next((idx for idx, h in enumerate(headers) if any(k in h for k in keys)), None)
+                header_indexes = {
+                    'full_name': find_any(['name', 'student', 'full']),
+                    'grade': find_any(['grade']),
+                    'homeroom_number': (lambda x: x if x is not None else find_any(['room']))(find_any(['homeroom'])),
+                    'homeroom_teacher': find_any(['teacher']),
+                }
+                # If headers not matched, fall back to first four columns
+                if header_indexes['full_name'] is None and len(row) >= 4:
+                    header_indexes = { 'full_name': 0, 'grade': 1, 'homeroom_number': 2, 'homeroom_teacher': 3 }
+                continue
+
+            def val(index):
+                return (str(row[index]).strip() if (index is not None and index < len(row) and row[index] is not None) else None)
+
+            full_name = val(header_indexes['full_name'])
+            grade = val(header_indexes['grade'])
+            homeroom_number = val(header_indexes['homeroom_number'])
+            homeroom_teacher = val(header_indexes['homeroom_teacher'])
+
+            # Parse full name into first and last name
+            if not full_name:
+                continue
+            
+            first_name = ''
+            last_name = ''
+            
+            # handle formats: "Last, First" or "First Last"
+            if ',' in full_name:
+                parts = [p.strip() for p in full_name.split(',', 1)]
+                if len(parts) == 2:
+                    last_name, first_name = parts[0], parts[1]
+            else:
+                parts = [p.strip() for p in full_name.split(' ') if p.strip()]
+                if len(parts) >= 2:
+                    first_name = parts[0]
+                    last_name = ' '.join(parts[1:])
+                elif len(parts) == 1:
+                    first_name = parts[0]
+                    last_name = ''
+            
+            if not first_name:
+                continue
+            existing = (
+                db.query(Student)
+                .filter(
+                    Student.event_id == 1,
+                    Student.first_name == str(first_name).strip(),
+                    Student.last_name == str(last_name).strip(),
+                )
+                .first()
+            )
+            if existing:
+                continue
+            student = Student(
+                first_name=str(first_name).strip(),
+                last_name=str(last_name).strip(),
+                grade=str(grade).strip() if grade is not None else None,
+                homeroom_number=str(homeroom_number).strip() if homeroom_number is not None else None,
+                homeroom_teacher=str(homeroom_teacher).strip() if homeroom_teacher is not None else None,
+                event_id=1,
+            )
+            db.add(student)
+            added += 1
+        db.commit()
+        return {"added": added}
     except Exception as e:
         return {"error": str(e)}
