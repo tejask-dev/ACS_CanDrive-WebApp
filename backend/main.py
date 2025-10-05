@@ -247,6 +247,53 @@ def debug_students():
     except Exception as e:
         return {"error": str(e)}
 
+@app.get("/debug/leaderboard")
+def debug_leaderboard():
+    from database import get_db
+    from models import Student
+    from collections import defaultdict
+    try:
+        print("DEBUG: Starting debug leaderboard...")
+        db = next(get_db())
+        students = db.query(Student).all()
+        print(f"DEBUG: Found {len(students)} students")
+        
+        if len(students) == 0:
+            return {"error": "No students found"}
+        
+        # Test with first 5 students
+        test_students = students[:5]
+        print(f"DEBUG: Testing with {len(test_students)} students")
+        
+        # Calculate totals
+        total_cans = sum(int(s.total_cans or 0) for s in test_students)
+        print(f"DEBUG: Total cans: {total_cans}")
+        
+        # Create simple leaderboard
+        top_students = []
+        for idx, s in enumerate(test_students):
+            student_data = {
+                "rank": idx + 1,
+                "name": f"{s.first_name} {s.last_name}".strip(),
+                "grade": s.grade,
+                "homeroomNumber": s.homeroom_number,
+                "totalCans": int(s.total_cans or 0),
+            }
+            top_students.append(student_data)
+            print(f"DEBUG: Student {idx+1}: {student_data}")
+        
+        return {
+            "topStudents": top_students,
+            "totalCans": total_cans,
+            "debug": f"Processed {len(test_students)} students"
+        }
+        
+    except Exception as e:
+        print(f"DEBUG: Error in debug leaderboard: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return {"error": str(e)}
+
 @app.get("/test/leaderboard")
 def test_leaderboard():
     return {
