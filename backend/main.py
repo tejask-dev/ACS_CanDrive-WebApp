@@ -247,6 +247,21 @@ def debug_students():
     except Exception as e:
         return {"error": str(e)}
 
+@app.get("/test/leaderboard")
+def test_leaderboard():
+    return {
+        "topStudents": [
+            {"rank": 1, "name": "Test Student", "grade": 12, "homeroomNumber": "101", "totalCans": 5}
+        ],
+        "topClasses": [
+            {"rank": 1, "name": "Test Teacher 101", "homeroomNumber": "101", "totalCans": 5}
+        ],
+        "topGrades": [
+            {"rank": 1, "grade": 12, "totalCans": 5}
+        ],
+        "totalCans": 5
+    }
+
 @app.get("/api/events/1/leaderboard")
 def leaderboard_direct():
     from database import get_db
