@@ -35,6 +35,7 @@ interface DailyDonorsData {
 }
 
 const DailyDonors = () => {
+  // Version 2.0 - Fixed prizes text
   const [data, setData] = useState<DailyDonorsData | null>(null);
   const [loading, setLoading] = useState(true);
 
