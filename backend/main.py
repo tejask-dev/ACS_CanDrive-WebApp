@@ -699,3 +699,21 @@ async def upload_roster_direct(file: UploadFile = File(...)):
         return {"added": added}
     except Exception as e:
         return {"error": str(e)}
+
+@app.delete("/api/events/1/reset")
+def reset_event_direct():
+    """Reset all data for event 1"""
+    from database import get_db
+    from models import Student, Donation, MapReservation
+    try:
+        db = next(get_db())
+        
+        # Delete all data for event 1
+        db.query(MapReservation).filter(MapReservation.event_id == 1).delete()
+        db.query(Donation).filter(Donation.event_id == 1).delete()
+        db.query(Student).filter(Student.event_id == 1).delete()
+        
+        db.commit()
+        return {"status": "ok", "message": "All data for event 1 has been reset"}
+    except Exception as e:
+        return {"error": str(e)}
