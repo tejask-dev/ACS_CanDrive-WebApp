@@ -141,11 +141,11 @@ const DailyDonors = () => {
               <Table>
                 <TableHead>
                   <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
-                    <TableCell sx={{ fontWeight: 'bold', fontFamily: 'Arial, sans-serif', fontSize: '1.2rem', color: 'white' }}>Rank</TableCell>
-                    <TableCell sx={{ fontWeight: 'bold', fontFamily: 'Arial, sans-serif', fontSize: '1.2rem', color: 'white' }}>Name</TableCell>
-                    <TableCell sx={{ fontWeight: 'bold', fontFamily: 'Arial, sans-serif', fontSize: '1.2rem', color: 'white' }}>Grade</TableCell>
-                    <TableCell sx={{ fontWeight: 'bold', fontFamily: 'Arial, sans-serif', fontSize: '1.2rem', color: 'white' }} align="right">Cans Today</TableCell>
-                    <TableCell sx={{ fontWeight: 'bold', fontFamily: 'Arial, sans-serif', fontSize: '1.2rem', color: 'white' }}>Prize</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', fontFamily: 'Arial, sans-serif', fontSize: '1.2rem', color: 'black' }}>Rank</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', fontFamily: 'Arial, sans-serif', fontSize: '1.2rem', color: 'black' }}>Name</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', fontFamily: 'Arial, sans-serif', fontSize: '1.2rem', color: 'black' }}>Grade</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', fontFamily: 'Arial, sans-serif', fontSize: '1.2rem', color: 'black' }} align="right">Cans Today</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', fontFamily: 'Arial, sans-serif', fontSize: '1.2rem', color: 'black' }}>Prize</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -171,7 +171,7 @@ const DailyDonors = () => {
                             </Typography>
                           </Box>
                         </TableCell>
-                        <TableCell sx={{ fontWeight: 600, fontFamily: 'Arial, sans-serif', fontSize: '1.1rem', color: 'white' }}>
+                        <TableCell sx={{ fontWeight: 600, fontFamily: 'Arial, sans-serif', fontSize: '1.1rem', color: 'black' }}>
                           {student.name}
                         </TableCell>
                         <TableCell>
@@ -182,11 +182,11 @@ const DailyDonors = () => {
                             size="small"
                           />
                         </TableCell>
-                        <TableCell align="right" sx={{ fontWeight: 700, color: 'white', fontFamily: 'Arial, sans-serif', fontSize: '1.1rem' }}>
+                        <TableCell align="right" sx={{ fontWeight: 700, color: 'black', fontFamily: 'Arial, sans-serif', fontSize: '1.1rem' }}>
                           {student.dailyCans} cans
                         </TableCell>
-                        <TableCell sx={{ fontWeight: 600, fontFamily: 'Arial, sans-serif', fontSize: '1.1rem', color: 'white' }}>
-                          Prizes yet to be announced
+                        <TableCell sx={{ fontWeight: 600, fontFamily: 'Arial, sans-serif', fontSize: '1.1rem', color: 'black' }}>
+                          Prizes soon to come...
                         </TableCell>
                       </TableRow>
                     ))
@@ -215,11 +215,11 @@ const DailyDonors = () => {
               <Table>
                 <TableHead>
                   <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
-                    <TableCell sx={{ fontWeight: 'bold', fontFamily: 'Arial, sans-serif', fontSize: '1.2rem', color: 'white' }}>Rank</TableCell>
-                    <TableCell sx={{ fontWeight: 'bold', fontFamily: 'Arial, sans-serif', fontSize: '1.2rem', color: 'white' }}>Name</TableCell>
-                    <TableCell sx={{ fontWeight: 'bold', fontFamily: 'Arial, sans-serif', fontSize: '1.2rem', color: 'white' }}>Homeroom</TableCell>
-                    <TableCell sx={{ fontWeight: 'bold', fontFamily: 'Arial, sans-serif', fontSize: '1.2rem', color: 'white' }} align="right">Cans Today</TableCell>
-                    <TableCell sx={{ fontWeight: 'bold', fontFamily: 'Arial, sans-serif', fontSize: '1.2rem', color: 'white' }}>Prize</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', fontFamily: 'Arial, sans-serif', fontSize: '1.2rem', color: 'black' }}>Rank</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', fontFamily: 'Arial, sans-serif', fontSize: '1.2rem', color: 'black' }}>Name</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', fontFamily: 'Arial, sans-serif', fontSize: '1.2rem', color: 'black' }}>Homeroom</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', fontFamily: 'Arial, sans-serif', fontSize: '1.2rem', color: 'black' }} align="right">Cans Today</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', fontFamily: 'Arial, sans-serif', fontSize: '1.2rem', color: 'black' }}>Prize</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -245,7 +245,7 @@ const DailyDonors = () => {
                             </Typography>
                           </Box>
                         </TableCell>
-                        <TableCell sx={{ fontWeight: 600, fontFamily: 'Arial, sans-serif', fontSize: '1.1rem', color: 'white' }}>
+                        <TableCell sx={{ fontWeight: 600, fontFamily: 'Arial, sans-serif', fontSize: '1.1rem', color: 'black' }}>
                           {teacher.name}
                         </TableCell>
                         <TableCell>
@@ -257,14 +257,14 @@ const DailyDonors = () => {
                               size="small"
                             />
                           ) : (
-                            <Typography color="white" sx={{ fontFamily: 'Arial, sans-serif', fontSize: '1.1rem' }}>No homeroom</Typography>
+                            <Typography color="black" sx={{ fontFamily: 'Arial, sans-serif', fontSize: '1.1rem' }}>No homeroom</Typography>
                           )}
                         </TableCell>
-                        <TableCell align="right" sx={{ fontWeight: 700, color: 'white', fontFamily: 'Arial, sans-serif', fontSize: '1.1rem' }}>
+                        <TableCell align="right" sx={{ fontWeight: 700, color: 'black', fontFamily: 'Arial, sans-serif', fontSize: '1.1rem' }}>
                           {teacher.dailyCans} cans
                         </TableCell>
-                        <TableCell sx={{ fontWeight: 600, fontFamily: 'Arial, sans-serif', fontSize: '1.1rem', color: 'white' }}>
-                          Prizes yet to be announced
+                        <TableCell sx={{ fontWeight: 600, fontFamily: 'Arial, sans-serif', fontSize: '1.1rem', color: 'black' }}>
+                          Prizes soon to come...
                         </TableCell>
                       </TableRow>
                     ))
