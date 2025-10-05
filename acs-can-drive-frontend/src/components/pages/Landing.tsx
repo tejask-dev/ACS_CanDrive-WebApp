@@ -73,37 +73,37 @@ const Landing = () => {
   const prizes = [
     {
       title: '1st Place',
-      prize: 'iPad Pro',
+      prize: 'Prizes soon to come...',
       description: 'Top individual collector',
       emoji: '🥇',
     },
     {
       title: '2nd Place',
-      prize: 'AirPods Pro',
+      prize: 'Prizes soon to come...',
       description: 'Second highest collector',
       emoji: '🥈',
     },
     {
       title: '3rd Place',
-      prize: '$100 Gift Card',
+      prize: 'Prizes soon to come...',
       description: 'Third highest collector',
       emoji: '🥉',
     },
     {
       title: 'Top Class',
-      prize: 'Pizza Party',
+      prize: 'Prizes soon to come...',
       description: 'Highest class average',
       emoji: '🍕',
     },
     {
       title: 'Top Grade',
-      prize: 'Ice Cream Social',
+      prize: 'Prizes soon to come...',
       description: 'Highest grade total',
       emoji: '🎉',
     },
     {
       title: 'Early Bird',
-      prize: '$25 Gift Card',
+      prize: 'Prizes soon to come...',
       description: 'First 50 cans collected',
       emoji: '🐦',
     },
