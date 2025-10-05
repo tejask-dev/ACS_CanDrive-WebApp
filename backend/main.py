@@ -247,6 +247,46 @@ def debug_students():
     except Exception as e:
         return {"error": str(e)}
 
+@app.get("/debug/database")
+def debug_database():
+    from database import get_db
+    from models import Student, Event
+    try:
+        print("DEBUG: Testing database connection...")
+        db = next(get_db())
+        
+        # Test basic query
+        student_count = db.query(Student).count()
+        print(f"DEBUG: Student count: {student_count}")
+        
+        # Test event query
+        events = db.query(Event).all()
+        print(f"DEBUG: Event count: {len(events)}")
+        
+        # Test student query with limit
+        students = db.query(Student).limit(5).all()
+        print(f"DEBUG: First 5 students:")
+        for s in students:
+            print(f"  - {s.first_name} {s.last_name}, grade: {s.grade}, total_cans: {s.total_cans}")
+        
+        return {
+            "student_count": student_count,
+            "event_count": len(events),
+            "sample_students": [
+                {
+                    "name": f"{s.first_name} {s.last_name}",
+                    "grade": s.grade,
+                    "total_cans": s.total_cans,
+                    "event_id": s.event_id
+                } for s in students
+            ]
+        }
+    except Exception as e:
+        print(f"DEBUG: Database error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return {"error": str(e)}
+
 @app.get("/debug/leaderboard")
 def debug_leaderboard():
     from database import get_db
