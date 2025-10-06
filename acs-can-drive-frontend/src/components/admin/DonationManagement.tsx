@@ -1,15 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Box, Typography, Paper, TextField, Button, Autocomplete, Stack, Tabs, Tab, Chip } from '@mui/material';
 import { School, Person } from '@mui/icons-material';
 import api from '@/services/api';
-import { API_ENDPOINTS, API_BASE_URL } from '@/config/api';
+import { API_ENDPOINTS } from '@/config/api';
 import { toast } from 'sonner';
 
 interface StudentOption { id: string; name: string; grade?: string; homeroomNumber?: string; }
 interface TeacherOption { id: string; name: string; homeroomNumber?: string; }
 
 const DonationManagement = () => {
-  const [query, setQuery] = useState('');
   const [options, setOptions] = useState<StudentOption[]>([]);
   const [teacherOptions, setTeacherOptions] = useState<TeacherOption[]>([]);
   const [selected, setSelected] = useState<StudentOption | null>(null);
@@ -18,7 +17,6 @@ const DonationManagement = () => {
   const [donorType, setDonorType] = useState<'student' | 'teacher'>('student');
 
   const searchStudents = async (text: string) => {
-    setQuery(text);
     if (text.length < 2) return;
     try {
       const res = await api.get(`${API_ENDPOINTS.EVENTS.STUDENTS('1')}/search`, { params: { q: text } });
@@ -29,7 +27,6 @@ const DonationManagement = () => {
   };
 
   const searchTeachers = async (text: string) => {
-    setQuery(text);
     if (text.length < 2) return;
     try {
       const res = await api.get(API_ENDPOINTS.EVENTS.TEACHERS('1'));
@@ -57,26 +54,31 @@ const DonationManagement = () => {
     }
     
     try {
-      const payload = {
+      let payload: any = {
         admin_id: 1,
         amount,
       };
       
-      if (donorType === 'student') {
-        payload.student_id = selected.id;
-      } else {
-        payload.teacher_id = selectedTeacher.id;
+      if (donorType === 'student' && selected) {
+        payload = {
+          ...payload,
+          student_id: selected.id
+        };
+      } else if (donorType === 'teacher' && selectedTeacher) {
+        payload = {
+          ...payload,
+          teacher_id: selectedTeacher.id
+        };
       }
       
       await api.post(API_ENDPOINTS.EVENTS.DONATIONS('1'), payload);
       
-      const donorName = donorType === 'student' ? selected.name : selectedTeacher.name;
+      const donorName = donorType === 'student' ? selected?.name : selectedTeacher?.name;
       toast.success(`Recorded ${amount} cans for ${donorName}`);
       
       setAmount(0);
       setSelected(null);
       setSelectedTeacher(null);
-      setQuery('');
     } catch (e) {
       toast.error('Failed to record donation. Person may not exist in database.');
     }
