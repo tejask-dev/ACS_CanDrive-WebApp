@@ -413,6 +413,7 @@ def get_leaderboard():
         # Add teacher contributions to their homerooms
         for teacher in teachers:
             if teacher.homeroom_number:
+                # Use the same format as students for consistency
                 key = f"{teacher.full_name} {teacher.homeroom_number}".strip()
                 class_groups[key] += teacher.total_cans or 0
         
@@ -846,20 +847,24 @@ def get_daily_donors():
     """Get top donors of the day"""
     from database import get_db
     from models import Donation, Student, Teacher
-    from datetime import datetime, date
+    from datetime import datetime, date, timezone, timedelta
     from collections import defaultdict
     
     try:
         db = next(get_db())
         
-        # Get today's date
-        today = date.today()
+        # Get today's date in Eastern Time (Windsor, Ontario)
+        eastern_tz = timezone(timedelta(hours=-5))  # EST (adjust to -4 for EDT if needed)
+        today = datetime.now(eastern_tz).date()
         
-        # Get donations for today
+        # Get donations for today in Eastern Time
+        start_of_day = datetime.combine(today, datetime.min.time()).replace(tzinfo=eastern_tz)
+        end_of_day = datetime.combine(today, datetime.max.time()).replace(tzinfo=eastern_tz)
+        
         today_donations = db.query(Donation).filter(
             Donation.event_id == 1,
-            Donation.donation_date >= datetime.combine(today, datetime.min.time()),
-            Donation.donation_date < datetime.combine(today, datetime.max.time())
+            Donation.donation_date >= start_of_day,
+            Donation.donation_date < end_of_day
         ).all()
         
         # Group donations by student/teacher and sum amounts

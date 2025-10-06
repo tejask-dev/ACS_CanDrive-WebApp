@@ -80,13 +80,13 @@ const DailyDonors = () => {
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    // Add 1 day to fix the date issue
-    date.setDate(date.getDate() + 1);
+    // Convert to Eastern Time (EST/EDT)
     return date.toLocaleDateString('en-US', {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
-      day: 'numeric'
+      day: 'numeric',
+      timeZone: 'America/Toronto' // Windsor, Ontario timezone
     });
   };
 
