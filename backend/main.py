@@ -939,6 +939,52 @@ def get_students_direct(grade: str = None, homeroom: str = None, name: str = Non
     except Exception as e:
         return {"error": str(e)}
 
+@app.put("/api/events/1/students/{student_id}")
+def update_student_direct(student_id: int, payload: dict):
+    """Update student data for event 1"""
+    from models import Student
+    try:
+        db = get_db_with_retry()
+        
+        # Find the student
+        student = db.query(Student).filter(
+            Student.id == student_id,
+            Student.event_id == 1
+        ).first()
+        
+        if not student:
+            return {"error": "Student not found"}
+        
+        # Update fields if provided
+        if "totalCans" in payload:
+            student.total_cans = payload["totalCans"]
+        if "first_name" in payload:
+            student.first_name = payload["first_name"]
+        if "last_name" in payload:
+            student.last_name = payload["last_name"]
+        if "grade" in payload:
+            student.grade = payload["grade"]
+        if "homeroomNumber" in payload:
+            student.homeroom_number = payload["homeroomNumber"]
+        if "homeroomTeacher" in payload:
+            student.homeroom_teacher = payload["homeroomTeacher"]
+        
+        db.commit()
+        db.refresh(student)
+        
+        return {
+            "id": student.id,
+            "name": f"{student.first_name} {student.last_name}".strip(),
+            "first_name": student.first_name,
+            "last_name": student.last_name,
+            "grade": student.grade,
+            "homeroomNumber": student.homeroom_number,
+            "homeroomTeacher": student.homeroom_teacher,
+            "totalCans": student.total_cans or 0,
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
 @app.get("/api/events/1/teachers")
 def get_teachers_direct():
     """Get all teachers for event 1"""
