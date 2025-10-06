@@ -40,7 +40,7 @@ const StudentSignup = () => {
   const [studentOptions, setStudentOptions] = useState<any[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
 
-  const steps = ['Student Information', 'Reserve Streets'];
+  const steps = ['Verify Name', 'Reserve Streets'];
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -71,38 +71,30 @@ const StudentSignup = () => {
       setFormData({
         ...formData,
         name: student.name,
-        grade: student.grade?.toString() || '',
-        homeroomNumber: student.homeroomNumber || '',
-        homeroomTeacher: student.homeroomTeacher || '',
       });
       setStudentId(student.id);
-      toast.success('Student information auto-filled!');
+      toast.success('Student found! You can proceed to street reservation.');
     }
   };
 
   const handleSubmitInfo = async () => {
+    if (!studentId) {
+      toast.error('Please select your name from the list');
+      return;
+    }
+    
     try {
-      // First verify the student exists in the roster
+      // Verify the student exists in the roster
       const verifyResponse = await api.post(`${API_ENDPOINTS.EVENTS.STUDENTS(formData.eventId)}/verify`, {
         first_name: formData.name.split(' ')[0],
         last_name: formData.name.split(' ').slice(1).join(' '),
-        grade: formData.grade,
-        homeroom_number: formData.homeroomNumber,
-        homeroom_teacher: formData.homeroomTeacher,
       });
       
       setStudentId(verifyResponse.data.id);
-      // auto-fill returned canonical info
-      setFormData((prev) => ({
-        ...prev,
-        grade: verifyResponse.data.grade?.toString() || prev.grade,
-        homeroomNumber: verifyResponse.data.homeroomNumber || prev.homeroomNumber,
-        homeroomTeacher: verifyResponse.data.homeroomTeacher || prev.homeroomTeacher,
-      }));
       setActiveStep(1);
       toast.success('Student verified! You can now reserve streets.');
     } catch (error) {
-      toast.error('Student not found in roster. Please check your information or contact admin.');
+      toast.error('Student not found in roster. Please check your name or contact admin.');
       console.error(error);
     }
   };
@@ -120,7 +112,7 @@ const StudentSignup = () => {
             <ArrowBack />
           </IconButton>
           <Typography variant="h6" sx={{ flexGrow: 1, fontWeight: 700 }}>
-            ACS Can Drive - Student Signup
+            ACS Can Drive - Student Street Signup
           </Typography>
         </Toolbar>
       </AppBar>
@@ -147,11 +139,15 @@ const StudentSignup = () => {
                 transition={{ duration: 0.4 }}
               >
                 <Typography variant="h5" gutterBottom sx={{ fontWeight: 700, mb: 3 }}>
-                  Student Information
+                  Verify Your Name
                 </Typography>
 
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                <Autocomplete
+                  <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
+                    Search for your name in the database to verify you're registered for the can drive.
+                  </Typography>
+                  
+                  <Autocomplete
                     freeSolo
                     options={studentOptions}
                     getOptionLabel={(option) => option.name || option}
@@ -165,9 +161,10 @@ const StudentSignup = () => {
                     renderInput={(params) => (
                       <TextField
                         {...params}
-                        label="Full Name (Start typing to search)"
+                        label="Search for your name"
                         name="name"
                         required
+                        placeholder="Start typing your name..."
                         InputProps={{
                           ...params.InputProps,
                           endAdornment: (
@@ -191,45 +188,11 @@ const StudentSignup = () => {
                     )}
                   />
 
-                  <TextField
-                    fullWidth
-                    select
-                    label="Grade"
-                    name="grade"
-                    value={formData.grade}
-                    onChange={handleInputChange}
-                    required
-                  >
-                    {[9, 10, 11, 12].map((grade) => (
-                      <MenuItem key={grade} value={grade}>
-                        Grade {grade}
-                      </MenuItem>
-                    ))}
-                  </TextField>
-
-                  <TextField
-                    fullWidth
-                    label="Homeroom Number"
-                    name="homeroomNumber"
-                    value={formData.homeroomNumber}
-                    onChange={handleInputChange}
-                    required
-                  />
-
-                  <TextField
-                    fullWidth
-                    label="Homeroom Teacher"
-                    name="homeroomTeacher"
-                    value={formData.homeroomTeacher}
-                    onChange={handleInputChange}
-                    required
-                  />
-
                   <Button
                     variant="contained"
                     size="large"
                     onClick={handleSubmitInfo}
-                    disabled={!formData.name || !formData.grade || !formData.homeroomNumber || !formData.homeroomTeacher}
+                    disabled={!studentId}
                     sx={{
                       background: 'linear-gradient(135deg, hsl(217, 91%, 35%) 0%, hsl(217, 91%, 55%) 100%)',
                       color: 'white',

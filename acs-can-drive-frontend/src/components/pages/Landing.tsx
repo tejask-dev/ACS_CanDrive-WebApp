@@ -234,7 +234,7 @@ const Landing = () => {
                     }
                   }}
                 >
-                  Student Signup
+                  Student Street Signup
                 </MUIButton>
               </motion.div>
 
@@ -256,7 +256,7 @@ const Landing = () => {
                     }
                   }}
                 >
-                  Teacher Signup
+                  Teacher Street Signup
                 </MUIButton>
               </motion.div>
 

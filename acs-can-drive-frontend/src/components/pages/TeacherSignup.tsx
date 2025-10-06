@@ -79,17 +79,17 @@ const TeacherSignup = () => {
       <Box sx={{ textAlign: 'center', mb: 4 }}>
         <School sx={{ fontSize: 60, color: 'primary.main', mb: 2 }} />
         <Typography variant="h3" sx={{ fontWeight: 700, mb: 1 }}>
-          Teacher Signup
+          Teacher Street Signup
         </Typography>
         <Typography variant="h6" color="text.secondary">
-          Select your name to access the teacher portal
+          Select your name to access street reservations
         </Typography>
       </Box>
 
       <Paper sx={{ p: 4, borderRadius: 3, boxShadow: 3 }}>
         <Alert severity="info" sx={{ mb: 3 }}>
           <Typography variant="body2">
-            <strong>Teacher Portal Access:</strong> Select your name from the list below to access teacher features including donations and leaderboard viewing.
+            <strong>Teacher Street Access:</strong> Select your name from the list below to access street reservation features.
           </Typography>
         </Alert>
 
@@ -187,7 +187,7 @@ const TeacherSignup = () => {
         </Button>
 
         <Typography variant="body2" color="text.secondary" sx={{ mt: 2, textAlign: 'center' }}>
-          After signing up, you can make donations and view the leaderboard
+          After signing up, you can reserve streets for collection
         </Typography>
       </Paper>
     </Box>
