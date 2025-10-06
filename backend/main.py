@@ -1,8 +1,10 @@
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from database import init_db
+from database import init_db, get_db
 from routers import admin, events, students, donations, map_reservations
 import os
+import time
+from sqlalchemy.exc import TimeoutError, OperationalError
 
 app = FastAPI()
 
@@ -15,6 +17,22 @@ app.add_middleware(
 )
 
 init_db()
+
+# Database retry helper
+def get_db_with_retry(max_retries=3, delay=1):
+    """Get database connection with retry logic for connection pool issues"""
+    for attempt in range(max_retries):
+        try:
+            db = next(get_db())
+            return db
+        except (TimeoutError, OperationalError) as e:
+            if attempt == max_retries - 1:
+                print(f"Database connection failed after {max_retries} attempts: {e}")
+                raise HTTPException(status_code=503, detail="Database temporarily unavailable")
+            print(f"Database connection attempt {attempt + 1} failed, retrying in {delay} seconds...")
+            time.sleep(delay)
+            delay *= 2  # Exponential backoff
+    return None
 
 # Ensure admin user exists on startup
 def ensure_admin_user():
@@ -58,7 +76,15 @@ def favicon():
 
 @app.get("/health")
 def health_check():
-    return {"status": "healthy", "msg": "ACS Can Drive API running"}
+    """Health check endpoint to monitor database connectivity"""
+    try:
+        db = get_db_with_retry(max_retries=1, delay=0.5)
+        # Simple query to test connection
+        db.execute("SELECT 1")
+        db.close()
+        return {"status": "healthy", "database": "connected", "msg": "ACS Can Drive API running"}
+    except Exception as e:
+        return {"status": "unhealthy", "database": "disconnected", "error": str(e)}
 
 @app.options("/{path:path}")
 def options_handler(path: str):
@@ -357,13 +383,12 @@ def test_leaderboard():
 @app.get("/api/events/1/leaderboard")
 def get_leaderboard():
     """Get leaderboard data for event 1"""
-    from database import get_db
     from models import Student, Teacher
     from collections import defaultdict
     
     try:
-        # Get database connection
-        db = next(get_db())
+        # Get database connection with retry
+        db = get_db_with_retry()
         
         # Get all students and teachers for event 1
         students = db.query(Student).filter(Student.event_id == 1).all()
@@ -1042,13 +1067,12 @@ async def upload_teachers_direct(file: UploadFile = File(...)):
 @app.get("/api/events/1/daily-donors")
 def get_daily_donors():
     """Get top donors of the day"""
-    from database import get_db
     from models import Donation, Student, Teacher
     from datetime import datetime, date, timezone, timedelta
     from collections import defaultdict
     
     try:
-        db = next(get_db())
+        db = get_db_with_retry()
         
         # Get today's date in Eastern Time (Windsor, Ontario)
         # Currently EDT (Eastern Daylight Time) = UTC-4

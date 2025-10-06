@@ -7,7 +7,25 @@ import os
 load_dotenv()
 SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./can_drive.db")
 
-engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
+# Configure connection pool for production
+if SQLALCHEMY_DATABASE_URL.startswith("postgresql"):
+    # PostgreSQL configuration for Render
+    engine = create_engine(
+        SQLALCHEMY_DATABASE_URL,
+        pool_size=1,  # Small pool for free tier
+        max_overflow=0,  # No overflow connections
+        pool_timeout=30,  # 30 second timeout
+        pool_recycle=3600,  # Recycle connections every hour
+        pool_pre_ping=True,  # Verify connections before use
+        connect_args={"sslmode": "require"}
+    )
+else:
+    # SQLite configuration for local development
+    engine = create_engine(
+        SQLALCHEMY_DATABASE_URL, 
+        connect_args={"check_same_thread": False}
+    )
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 def get_db():
