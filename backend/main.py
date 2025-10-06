@@ -754,7 +754,11 @@ def reserve_street_direct(payload: dict):
         ).first()
         
         if existing:
-            return {"error": "Street already reserved"}
+            # Check if it's a teacher or student reservation
+            if existing.student_id:
+                return {"error": f"Street already reserved by student: {existing.name}"}
+            else:
+                return {"error": f"Street already reserved by: {existing.name}"}
         
         # Create new reservation
         reservation = MapReservation(
@@ -1073,9 +1077,10 @@ def get_daily_donors():
         print(f"End of day (UTC): {end_of_day_utc}")
         print(f"Found {len(today_donations)} donations for today")
         
-        # Group donations by student/teacher and sum amounts
+        # Group donations by student/teacher/grade and sum amounts
         student_daily = defaultdict(int)
         teacher_daily = defaultdict(int)
+        grade_daily = defaultdict(int)
         
         for donation in today_donations:
             if donation.student_id:
@@ -1108,6 +1113,30 @@ def get_daily_donors():
             # Add rank
             for i, student in enumerate(top_students):
                 student["rank"] = i + 1
+                
+            # Calculate grade totals for today
+            for student in students:
+                daily_amount = student_daily[student.id]
+                grade = str(student.grade or '').strip()
+                if grade:
+                    grade_daily[grade] += daily_amount
+        
+        # Get top grades for today
+        top_grades = []
+        if grade_daily:
+            grade_rankings = []
+            for grade, daily_amount in grade_daily.items():
+                grade_rankings.append({
+                    "grade": grade,
+                    "dailyCans": daily_amount
+                })
+            
+            grade_rankings.sort(key=lambda x: x["dailyCans"], reverse=True)
+            top_grades = grade_rankings[:10]
+            
+            # Add rank
+            for i, grade in enumerate(top_grades):
+                grade["rank"] = i + 1
         
         # Get top 10 teachers for today
         top_teachers = []
@@ -1137,7 +1166,8 @@ def get_daily_donors():
         return {
             "date": today.isoformat(),
             "topStudents": top_students,
-            "topTeachers": top_teachers
+            "topTeachers": top_teachers,
+            "topGrades": top_grades
         }
         
     except Exception as e:
@@ -1146,16 +1176,28 @@ def get_daily_donors():
             "date": date.today().isoformat(),
             "topStudents": [],
             "topTeachers": [],
+            "topGrades": [],
             "error": str(e)
         }
 
 @app.delete("/api/events/1/reset")
-def reset_event_direct():
-    """Reset all data for event 1"""
+def reset_event_direct(confirm: bool = False):
+    """Reset all data for event 1 - requires confirmation"""
     from database import get_db
     from models import Student, Donation, MapReservation, Teacher
     try:
+        if not confirm:
+            return {"error": "Reset requires confirmation. Add ?confirm=true to the request."}
+            
         db = next(get_db())
+        
+        # Count existing data before deletion
+        student_count = db.query(Student).filter(Student.event_id == 1).count()
+        donation_count = db.query(Donation).filter(Donation.event_id == 1).count()
+        reservation_count = db.query(MapReservation).filter(MapReservation.event_id == 1).count()
+        teacher_count = db.query(Teacher).filter(Teacher.event_id == 1).count()
+        
+        print(f"RESET WARNING: Deleting {student_count} students, {donation_count} donations, {reservation_count} reservations, {teacher_count} teachers")
         
         # Delete all data for event 1
         db.query(MapReservation).filter(MapReservation.event_id == 1).delete()
@@ -1164,6 +1206,15 @@ def reset_event_direct():
         db.query(Teacher).filter(Teacher.event_id == 1).delete()
         
         db.commit()
-        return {"status": "ok", "message": "All data for event 1 has been reset"}
+        return {
+            "status": "ok", 
+            "message": "All data for event 1 has been reset",
+            "deleted": {
+                "students": student_count,
+                "donations": donation_count,
+                "reservations": reservation_count,
+                "teachers": teacher_count
+            }
+        }
     except Exception as e:
         return {"error": str(e)}

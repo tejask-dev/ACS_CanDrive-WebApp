@@ -14,7 +14,7 @@ import {
 } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
 import type { GridColDef } from '@mui/x-data-grid';
-import { Add, Edit, Delete } from '@mui/icons-material';
+import { Add, Edit, Delete, AttachMoney } from '@mui/icons-material';
 import { toast } from 'sonner';
 import api from '@/services/api';
 import { API_ENDPOINTS } from '@/config/api';
@@ -23,12 +23,16 @@ import type { Student } from '@/types';
 const StudentManagement = () => {
   const [students, setStudents] = useState<Student[]>([]);
   const [open, setOpen] = useState(false);
+  const [editCansOpen, setEditCansOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     grade: '',
     homeroomNumber: '',
     homeroomTeacher: '',
+  });
+  const [cansData, setCansData] = useState({
+    totalCans: 0,
   });
   const [filters, setFilters] = useState({
     grade: '',
@@ -95,6 +99,30 @@ const StudentManagement = () => {
     }
   };
 
+  const handleEditCans = (student: Student) => {
+    setSelectedStudent(student);
+    setCansData({
+      totalCans: student.totalCans || 0,
+    });
+    setEditCansOpen(true);
+  };
+
+  const handleUpdateCans = async () => {
+    if (!selectedStudent) return;
+
+    try {
+      await api.put(
+        API_ENDPOINTS.EVENTS.STUDENT_BY_ID('1', selectedStudent.id),
+        { totalCans: cansData.totalCans }
+      );
+      toast.success('Student cans updated successfully');
+      setEditCansOpen(false);
+      loadStudents();
+    } catch (error) {
+      toast.error('Failed to update student cans');
+    }
+  };
+
   const resetForm = () => {
     setFormData({
       name: '',
@@ -114,7 +142,7 @@ const StudentManagement = () => {
     {
       field: 'actions',
       headerName: 'Actions',
-      width: 120,
+      width: 180,
       renderCell: (params) => (
         <>
           <IconButton
@@ -129,13 +157,23 @@ const StudentManagement = () => {
               });
               setOpen(true);
             }}
+            title="Edit Student Info"
           >
             <Edit />
           </IconButton>
           <IconButton
             size="small"
+            color="primary"
+            onClick={() => handleEditCans(params.row)}
+            title="Edit Total Cans"
+          >
+            <AttachMoney />
+          </IconButton>
+          <IconButton
+            size="small"
             color="error"
             onClick={() => handleDelete(params.row.id)}
+            title="Delete Student"
           >
             <Delete />
           </IconButton>
@@ -253,6 +291,32 @@ const StudentManagement = () => {
           <Button onClick={() => setOpen(false)}>Cancel</Button>
           <Button onClick={handleSubmit} variant="contained">
             Save
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={editCansOpen} onClose={() => setEditCansOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Edit Total Cans - {selectedStudent?.name}</DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2 }}>
+            <TextField
+              label="Total Cans"
+              type="number"
+              value={cansData.totalCans}
+              onChange={(e) => setCansData({ ...cansData, totalCans: Number(e.target.value) })}
+              fullWidth
+              inputProps={{ min: 0 }}
+              helperText="Enter the total number of cans for this student"
+            />
+            <Typography variant="body2" color="text.secondary">
+              Current total: {selectedStudent?.totalCans || 0} cans
+            </Typography>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setEditCansOpen(false)}>Cancel</Button>
+          <Button onClick={handleUpdateCans} variant="contained" color="primary">
+            Update Cans
           </Button>
         </DialogActions>
       </Dialog>

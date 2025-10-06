@@ -240,6 +240,28 @@ const Landing = () => {
 
               <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.98 }}>
                 <MUIButton
+                  onClick={() => navigate('/teacher-signup')}
+                  sx={{
+                    px: 4,
+                    py: 1.5,
+                    fontWeight: 800,
+                    fontSize: { xs: '0.95rem', md: '1.05rem' },
+                    borderRadius: 3,
+                    color: '#fff',
+                    boxShadow: '0 10px 30px rgba(0,0,0,0.2)',
+                    background: 'linear-gradient(135deg, hsl(200, 60%, 55%) 0%, hsl(200, 60%, 45%) 100%)',
+                    '&:hover': {
+                      background: 'linear-gradient(135deg, hsl(200, 60%, 60%) 0%, hsl(200, 60%, 50%) 100%)',
+                      transform: 'translateY(-1px)'
+                    }
+                  }}
+                >
+                  Teacher Signup
+                </MUIButton>
+              </motion.div>
+
+              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.98 }}>
+                <MUIButton
                   onClick={() => navigate('/leaderboard')}
                   sx={{
                     px: 4,

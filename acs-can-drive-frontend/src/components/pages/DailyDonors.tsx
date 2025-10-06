@@ -28,10 +28,17 @@ interface DailyDonor {
   homeroomNumber?: string;
 }
 
+interface DailyGrade {
+  grade: string;
+  dailyCans: number;
+  rank: number;
+}
+
 interface DailyDonorsData {
   date: string;
   topStudents: DailyDonor[];
   topTeachers: DailyDonor[];
+  topGrades: DailyGrade[];
 }
 
 const DailyDonors = () => {
@@ -265,6 +272,76 @@ const DailyDonors = () => {
                         </TableCell>
                         <TableCell align="right" sx={{ fontWeight: 700, color: 'black', fontFamily: 'Arial, sans-serif', fontSize: '1.1rem' }}>
                           {teacher.dailyCans} cans
+                        </TableCell>
+                        <TableCell sx={{ fontWeight: 600, fontFamily: 'Arial, sans-serif', fontSize: '1.1rem', color: 'black' }}>
+                          Prizes soon to come...
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Paper>
+
+          {/* Top Grades */}
+          <Paper elevation={3} sx={{ borderRadius: 3, overflow: 'hidden' }}>
+            <Box sx={{ 
+              background: 'linear-gradient(135deg, #ff9800 0%, #ffc107 100%)', 
+              color: 'white', 
+              p: 2,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1
+            }}>
+              <EmojiEvents />
+              <Typography variant="h6" sx={{ fontWeight: 'bold', fontFamily: 'Arial, sans-serif' }}>
+                Top Grades Today
+              </Typography>
+            </Box>
+            <TableContainer>
+              <Table>
+                <TableHead>
+                  <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
+                    <TableCell sx={{ fontWeight: 'bold', fontFamily: 'Arial, sans-serif', fontSize: '1.2rem', color: 'black' }}>Rank</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', fontFamily: 'Arial, sans-serif', fontSize: '1.2rem', color: 'black' }}>Grade</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', fontFamily: 'Arial, sans-serif', fontSize: '1.2rem', color: 'black' }} align="right">Cans Today</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', fontFamily: 'Arial, sans-serif', fontSize: '1.2rem', color: 'black' }}>Prize</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {data?.topGrades.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={4} align="center">
+                        <Alert severity="info">No grade donations today</Alert>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    data?.topGrades.map((grade) => (
+                      <TableRow key={grade.grade} hover>
+                        <TableCell>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Typography
+                              sx={{
+                                fontSize: '1.2rem',
+                                fontWeight: 700,
+                                color: getRankColor(grade.rank),
+                              }}
+                            >
+                              {getRankIcon(grade.rank)}
+                            </Typography>
+                          </Box>
+                        </TableCell>
+                        <TableCell sx={{ fontWeight: 600, fontFamily: 'Arial, sans-serif', fontSize: '1.1rem', color: 'black' }}>
+                          <Chip 
+                            label={`Grade ${grade.grade}`} 
+                            color="warning" 
+                            variant="filled"
+                            size="medium"
+                          />
+                        </TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 700, color: 'black', fontFamily: 'Arial, sans-serif', fontSize: '1.1rem' }}>
+                          {grade.dailyCans} cans
                         </TableCell>
                         <TableCell sx={{ fontWeight: 600, fontFamily: 'Arial, sans-serif', fontSize: '1.1rem', color: 'black' }}>
                           Prizes soon to come...
