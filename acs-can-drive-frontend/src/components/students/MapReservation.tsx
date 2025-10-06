@@ -25,11 +25,10 @@ interface MapReservationProps {
   eventId: string;
   studentId: string;
   studentName: string;
-  groupMembers?: string;
   onComplete: () => void;
 }
 
-const MapReservation = ({ eventId, studentId, studentName, groupMembers, onComplete }: MapReservationProps) => {
+const MapReservation = ({ eventId, studentId, studentName, onComplete }: MapReservationProps) => {
   const { isLoaded } = useJsApiLoader({
     id: 'google-map-script',
     googleMapsApiKey: GOOGLE_MAPS_API_KEY,

@@ -615,12 +615,17 @@ def add_donation_direct(payload: dict):
     try:
         db = next(get_db())
         
-        # Create donation
+        # Create donation with Eastern timezone
+        from datetime import datetime, timezone, timedelta
+        eastern_tz = timezone(timedelta(hours=-4))  # EDT (Eastern Daylight Time)
+        now_eastern = datetime.now(eastern_tz)
+        
         donation = Donation(
             event_id=1,
             student_id=payload.get('student_id'),
             teacher_id=payload.get('teacher_id'),
-            amount=payload.get('amount', 0)
+            amount=payload.get('amount', 0),
+            donation_date=now_eastern
         )
         
         db.add(donation)
@@ -678,6 +683,54 @@ def list_map_reservations_direct():
         ]
     except Exception as e:
         return {"error": str(e)}
+
+@app.get("/api/events/1/map-reservations/export.csv")
+def export_map_reservations_csv():
+    """Export map reservations as CSV"""
+    from database import get_db
+    from models import MapReservation
+    import csv
+    import io
+    
+    try:
+        db = next(get_db())
+        reservations = db.query(MapReservation).filter(MapReservation.event_id == 1).all()
+        
+        # Create CSV content
+        output = io.StringIO()
+        writer = csv.writer(output)
+        
+        # Write header
+        writer.writerow(['Street Name', 'Student Name', 'Group Members', 'Created At'])
+        
+        # Write data
+        for r in reservations:
+            writer.writerow([
+                r.street_name or '',
+                r.name or '',
+                r.group_members or '',
+                r.timestamp.isoformat() if r.timestamp else ''
+            ])
+        
+        # Return CSV content
+        csv_content = output.getvalue()
+        output.close()
+        
+        from fastapi.responses import Response
+        return Response(
+            content=csv_content,
+            media_type="text/csv",
+            headers={"Content-Disposition": "attachment; filename=map_reservations.csv"}
+        )
+        
+    except Exception as e:
+        print(f"CSV export error: {e}")
+        from fastapi.responses import Response
+        return Response(
+            content=f"Error exporting CSV: {str(e)}",
+            media_type="text/plain",
+            status_code=500
+        )
 
 @app.post("/api/events/1/map-reservations")
 def reserve_street_direct(payload: dict):

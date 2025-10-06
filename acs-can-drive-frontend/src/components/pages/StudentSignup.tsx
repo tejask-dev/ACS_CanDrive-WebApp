@@ -35,8 +35,6 @@ const StudentSignup = () => {
     homeroomNumber: '',
     homeroomTeacher: '',
     eventId: '1',
-    groupCollection: false,
-    groupMembers: '',
   });
   const [studentId, setStudentId] = useState<string | null>(null);
   const [studentOptions, setStudentOptions] = useState<any[]>([]);
@@ -192,20 +190,6 @@ const StudentSignup = () => {
                       </Box>
                     )}
                   />
-                <FormControlLabel
-                  control={<Checkbox checked={formData.groupCollection} onChange={(e) => setFormData({ ...formData, groupCollection: e.target.checked })} />}
-                  label="Group collection?"
-                />
-                {formData.groupCollection && (
-                  <TextField
-                    fullWidth
-                    label="Group members (comma separated)"
-                    name="groupMembers"
-                    value={formData.groupMembers}
-                    onChange={handleInputChange}
-                    placeholder="e.g., Jane Doe, Alex Kim"
-                  />
-                )}
 
                   <TextField
                     fullWidth
@@ -282,7 +266,6 @@ const StudentSignup = () => {
                   eventId={formData.eventId}
                   studentId={studentId}
                   studentName={formData.name}
-                  groupMembers={formData.groupCollection ? formData.groupMembers : ''}
                   onComplete={handleComplete}
                 />
               </motion.div>

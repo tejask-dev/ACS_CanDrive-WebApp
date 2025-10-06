@@ -65,16 +65,44 @@ const MapView = () => {
                 borderBottom: '1px solid',
                 borderColor: 'divider',
                 '&:last-child': { borderBottom: 'none' },
+                flexDirection: 'column',
+                alignItems: 'flex-start',
+                py: 2,
               }}
             >
-              <ListItemText
-                primary={reservation.streetName}
-                secondary={`Reserved by ${reservation.studentName || 'Unknown'}`}
-              />
-              <Chip
-                label={new Date(reservation.createdAt).toLocaleDateString()}
-                size="small"
-              />
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', mb: 1 }}>
+                <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                  {reservation.streetName}
+                </Typography>
+                <Chip
+                  label={new Date(reservation.createdAt).toLocaleDateString()}
+                  size="small"
+                />
+              </Box>
+              
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                Reserved by: {reservation.studentName || 'Unknown'}
+              </Typography>
+              
+              {/* Group Collection Display */}
+              {reservation.groupMembers && (
+                <Box sx={{ mt: 1 }}>
+                  <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5, color: 'primary.main' }}>
+                    Group Collection Members:
+                  </Typography>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                    {reservation.groupMembers.split(',').map((member, index) => (
+                      <Chip
+                        key={index}
+                        label={member.trim()}
+                        size="small"
+                        color="primary"
+                        variant="outlined"
+                      />
+                    ))}
+                  </Box>
+                </Box>
+              )}
             </ListItem>
           ))}
         </List>
