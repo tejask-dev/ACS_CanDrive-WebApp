@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Box, Typography, Paper, List, ListItem, ListItemText, Chip, Button, Stack } from '@mui/material';
-import { Map as MapIcon, FileDownload } from '@mui/icons-material';
+import { Box, Typography, Paper, List, ListItem, ListItemText, Chip, Button, Stack, IconButton, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
+import { Map as MapIcon, FileDownload, Delete, Warning } from '@mui/icons-material';
 import { toast } from 'sonner';
 import api from '@/services/api';
 import { API_ENDPOINTS, API_BASE_URL } from '@/config/api';
@@ -8,6 +8,8 @@ import type { MapReservation } from '@/types';
 
 const MapView = () => {
   const [reservations, setReservations] = useState<MapReservation[]>([]);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [reservationToDelete, setReservationToDelete] = useState<MapReservation | null>(null);
 
   useEffect(() => {
     loadReservations();
@@ -24,6 +26,31 @@ const MapView = () => {
 
   const handleExport = () => {
     window.open(`${API_BASE_URL}/events/1/map-reservations/export.csv`, '_blank');
+  };
+
+  const handleDeleteClick = (reservation: MapReservation) => {
+    setReservationToDelete(reservation);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!reservationToDelete) return;
+
+    try {
+      await api.delete(`${API_ENDPOINTS.EVENTS.MAP_RESERVATIONS('1')}/${reservationToDelete.id}`);
+      toast.success('Reservation deleted successfully');
+      loadReservations(); // Reload the list
+    } catch (error) {
+      toast.error('Failed to delete reservation');
+    } finally {
+      setDeleteDialogOpen(false);
+      setReservationToDelete(null);
+    }
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteDialogOpen(false);
+    setReservationToDelete(null);
   };
 
   return (
@@ -74,10 +101,20 @@ const MapView = () => {
                 <Typography variant="h6" sx={{ fontWeight: 600 }}>
                   {reservation.streetName}
                 </Typography>
-                <Chip
-                  label={new Date(reservation.createdAt).toLocaleDateString()}
-                  size="small"
-                />
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Chip
+                    label={new Date(reservation.createdAt).toLocaleDateString()}
+                    size="small"
+                  />
+                  <IconButton
+                    size="small"
+                    color="error"
+                    onClick={() => handleDeleteClick(reservation)}
+                    sx={{ ml: 1 }}
+                  >
+                    <Delete />
+                  </IconButton>
+                </Box>
               </Box>
               
               <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
@@ -115,6 +152,35 @@ const MapView = () => {
           </Box>
         )}
       </Paper>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onClose={handleDeleteCancel}>
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Warning color="warning" />
+          Delete Reservation
+        </DialogTitle>
+        <DialogContent>
+          <Typography>
+            Are you sure you want to delete this reservation?
+          </Typography>
+          {reservationToDelete && (
+            <Box sx={{ mt: 2, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+              <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                Street: {reservationToDelete.streetName}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Reserved by: {reservationToDelete.studentName || 'Unknown'}
+              </Typography>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleDeleteCancel}>Cancel</Button>
+          <Button onClick={handleDeleteConfirm} color="error" variant="contained">
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

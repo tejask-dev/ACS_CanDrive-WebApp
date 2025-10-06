@@ -805,6 +805,30 @@ def list_map_reservations_direct():
     except Exception as e:
         return {"error": str(e)}
 
+@app.delete("/api/events/1/map-reservations/{reservation_id}")
+def delete_map_reservation_direct(reservation_id: int):
+    """Delete a map reservation for event 1"""
+    from models import MapReservation
+    try:
+        db = get_db_with_retry()
+        
+        # Find the reservation
+        reservation = db.query(MapReservation).filter(
+            MapReservation.id == reservation_id,
+            MapReservation.event_id == 1
+        ).first()
+        
+        if not reservation:
+            return {"error": "Reservation not found"}
+        
+        # Delete the reservation
+        db.delete(reservation)
+        db.commit()
+        
+        return {"message": "Reservation deleted successfully"}
+    except Exception as e:
+        return {"error": str(e)}
+
 @app.get("/api/events/1/map-reservations/export.csv")
 def export_map_reservations_csv():
     """Export map reservations as CSV"""

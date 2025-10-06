@@ -48,6 +48,10 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
   const [groupStudents, setGroupStudents] = useState<Student[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [showGroupCollection, setShowGroupCollection] = useState(false);
+  
+  // Temporary street selection state
+  const [tempStreets, setTempStreets] = useState<{ lat: number; lng: number; name: string }[]>([]);
+  const [isCompleting, setIsCompleting] = useState(false);
 
   const onLoad = useCallback((map: google.maps.Map) => {
     setMap(map);
@@ -97,15 +101,44 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
     map?.setZoom(16);
   };
 
-  const handleReserve = async () => {
+  const handleReserve = () => {
     if (!selectedPlace) return;
 
+    // Add to temporary streets instead of immediately reserving
+    setTempStreets(prev => [...prev, selectedPlace]);
+    setMyReservations(prev => [...prev, selectedPlace.name]);
+    setShowInfo(false);
+    setSelectedPlace(null);
+    toast.success(`${selectedPlace.name} added to your selection!`);
+  };
+
+  const handleRemoveReservation = (streetName: string) => {
+    setMyReservations(myReservations.filter(street => street !== streetName));
+    setTempStreets(tempStreets.filter(street => street.name !== streetName));
+    toast.success(`${streetName} removed from your selection`);
+  };
+
+  const handleCompleteRegistration = async () => {
+    if (tempStreets.length === 0) {
+      toast.error('Please select at least one street before completing registration');
+      return;
+    }
+
+    setIsCompleting(true);
     try {
+      // Create a single reservation with all streets
+      const streetNames = tempStreets.map(street => street.name).join(', ');
+      const geojsonData = tempStreets.map(street => ({
+        lat: street.lat,
+        lng: street.lng,
+        name: street.name
+      }));
+
       const payload: any = {
         name: studentName,
-        street_name: selectedPlace.name,
-        group_members: '',  // Individual reservation, no group members
-        geojson: JSON.stringify({ lat: selectedPlace.lat, lng: selectedPlace.lng, group: '' }),
+        street_name: streetNames, // All streets as one entry
+        group_members: showGroupCollection ? groupStudents.map(s => `${s.first_name} ${s.last_name}`).join(', ') : '',
+        geojson: JSON.stringify(geojsonData),
       };
       
       // For teachers, don't send student_id
@@ -115,30 +148,32 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
       
       const response = await api.post(API_ENDPOINTS.EVENTS.MAP_RESERVATIONS(eventId), payload);
 
-      // Check if the response indicates an error
       if (response.data.error) {
         toast.error(response.data.error);
         return;
       }
 
-      setMyReservations([...myReservations, selectedPlace.name]);
-      setReservations([...reservations, response.data]);
-      setShowInfo(false);
-      setSelectedPlace(null);
-      toast.success(`${selectedPlace.name} reserved successfully!`);
+      // Clear temporary data
+      setTempStreets([]);
+      setMyReservations([]);
+      setGroupStudents([]);
+      setShowGroupCollection(false);
+      
+      // Reload reservations to show the new grouped reservation
+      loadReservations();
+      
+      toast.success(`Successfully reserved ${tempStreets.length} street(s)!`);
+      onComplete();
     } catch (error: any) {
-      console.error('Reservation failed:', error);
+      console.error('Registration failed:', error);
       if (error.response?.data?.error) {
         toast.error(error.response.data.error);
       } else {
-        toast.error('Failed to reserve street. Please try again.');
+        toast.error('Failed to complete registration. Please try again.');
       }
+    } finally {
+      setIsCompleting(false);
     }
-  };
-
-  const handleRemoveReservation = (streetName: string) => {
-    setMyReservations(myReservations.filter(street => street !== streetName));
-    toast.success(`${streetName} removed from your reservations`);
   };
 
   // Group collection functions
@@ -452,7 +487,8 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
                 variant="contained"
                 fullWidth
                 size="large"
-                onClick={onComplete}
+                onClick={handleCompleteRegistration}
+                disabled={isCompleting || myReservations.length === 0}
                 sx={{
                   mt: 3,
                   background: 'linear-gradient(135deg, hsl(217, 91%, 35%) 0%, hsl(217, 91%, 55%) 100%)',
@@ -460,7 +496,14 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
                   fontWeight: 700,
                 }}
               >
-                Complete Registration
+                {isCompleting ? (
+                  <>
+                    <CircularProgress size={20} sx={{ mr: 1 }} />
+                    Completing Registration...
+                  </>
+                ) : (
+                  `Complete Registration (${myReservations.length} streets)`
+                )}
               </Button>
             </Paper>
           </motion.div>
