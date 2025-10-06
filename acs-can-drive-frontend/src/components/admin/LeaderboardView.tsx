@@ -59,6 +59,28 @@ const LeaderboardView = () => {
     }
   };
 
+  const exportToCSV = async () => {
+    try {
+      const response = await api.get('/api/events/1/leaderboard/csv', {
+        responseType: 'blob'
+      });
+      
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'leaderboard.csv');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      
+      toast.success('Leaderboard exported successfully!');
+    } catch (error) {
+      console.error('Error exporting CSV:', error);
+      toast.error('Failed to export leaderboard');
+    }
+  };
+
   const getRankColor = (rank: number) => {
     if (rank === 1) return 'hsl(43, 96%, 56%)'; // Gold
     if (rank === 2) return 'hsl(0, 0%, 75%)'; // Silver
@@ -125,33 +147,51 @@ const LeaderboardView = () => {
   const handleExport = async (format: string) => {
     try {
       if (format === 'csv') {
-        // Create CSV content
-        let csvContent = '';
+        // Use backend CSV export endpoint
+        const response = await api.get('/api/events/1/leaderboard/csv', {
+          responseType: 'blob'
+        });
         
-        if (!data) {
-          toast.error('No data available to export');
-          return;
-        }
+        const url = window.URL.createObjectURL(new Blob([response.data]));
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', 'leaderboard.csv');
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
+        
+        toast.success('Leaderboard exported successfully!');
+        return;
+      }
+      
+      // For other formats, use the existing logic
+      let csvContent = '';
+      
+      if (!data) {
+        toast.error('No data available to export');
+        return;
+      }
 
-        if (tabValue === 0) {
-          // Top Students
-          csvContent = 'Rank,Name,Grade,Homeroom,Cans\n';
-          data.topStudents.forEach(student => {
-            csvContent += `${student.rank},"${student.name}",${student.grade},"${student.homeroomNumber}",${student.totalCans}\n`;
-          });
-        } else if (tabValue === 1) {
-          // Top Classes
-          csvContent = 'Rank,Class Name,Homeroom,Cans\n';
-          data.topClasses.forEach(cls => {
-            csvContent += `${cls.rank},"${cls.name}","${cls.homeroomNumber}",${cls.totalCans}\n`;
-          });
-        } else if (tabValue === 2) {
-          // Top Grades
-          csvContent = 'Rank,Grade,Cans\n';
-          data.topGrades.forEach(grade => {
-            csvContent += `${grade.rank},"Grade ${grade.grade}",${grade.totalCans}\n`;
-          });
-        }
+      if (tabValue === 0) {
+        // Top Students
+        csvContent = 'Rank,Name,Grade,Homeroom,Cans\n';
+        data.topStudents.forEach(student => {
+          csvContent += `${student.rank},"${student.name}",${student.grade},"${student.homeroomNumber}",${student.totalCans}\n`;
+        });
+      } else if (tabValue === 1) {
+        // Top Classes
+        csvContent = 'Rank,Class Name,Homeroom,Cans\n';
+        data.topClasses.forEach(cls => {
+          csvContent += `${cls.rank},"${cls.name}","${cls.homeroomNumber}",${cls.totalCans}\n`;
+        });
+      } else if (tabValue === 2) {
+        // Top Grades
+        csvContent = 'Rank,Grade,Cans\n';
+        data.topGrades.forEach(grade => {
+          csvContent += `${grade.rank},"Grade ${grade.grade}",${grade.totalCans}\n`;
+        });
+      }
         
         // Download CSV
         const blob = new Blob([csvContent], { type: 'text/csv' });

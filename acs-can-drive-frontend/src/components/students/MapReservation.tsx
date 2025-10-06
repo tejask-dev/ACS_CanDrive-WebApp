@@ -1,12 +1,12 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { GoogleMap, useJsApiLoader, Marker, InfoWindow, Autocomplete } from '@react-google-maps/api';
-import { Box, TextField, Button, Chip, Stack, Paper, Typography, CircularProgress } from '@mui/material';
-import { CheckCircle, LocationOn, Close } from '@mui/icons-material';
+import { Box, TextField, Button, Chip, Stack, Paper, Typography, CircularProgress, Autocomplete as MuiAutocomplete } from '@mui/material';
+import { CheckCircle, LocationOn, Close, Add, Person } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import api from '@/services/api';
 import { API_ENDPOINTS, GOOGLE_MAPS_API_KEY } from '@/config/api';
-import type { MapReservation as MapReservationType } from '@/types';
+import type { MapReservation as MapReservationType, Student } from '@/types';
 
 const libraries: ('places')[] = ['places'];
 
@@ -42,11 +42,28 @@ const MapReservation = ({ eventId, studentId, studentName, groupMembers, onCompl
   const [selectedPlace, setSelectedPlace] = useState<{ lat: number; lng: number; name: string } | null>(null);
   const [showInfo, setShowInfo] = useState(false);
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
+  
+  // Group collection state
+  const [students, setStudents] = useState<Student[]>([]);
+  const [groupStudents, setGroupStudents] = useState<Student[]>([]);
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  const [showGroupCollection, setShowGroupCollection] = useState(false);
 
   const onLoad = useCallback((map: google.maps.Map) => {
     setMap(map);
     loadReservations();
+    loadStudents();
   }, []);
+
+  // Load students for group collection
+  const loadStudents = async () => {
+    try {
+      const response = await api.get(API_ENDPOINTS.EVENTS.STUDENTS(eventId));
+      setStudents(response.data || []);
+    } catch (error) {
+      console.error('Error loading students:', error);
+    }
+  };
 
   const onUnmount = useCallback(() => {
     setMap(null);
@@ -115,6 +132,49 @@ const MapReservation = ({ eventId, studentId, studentName, groupMembers, onCompl
   const handleRemoveReservation = (streetName: string) => {
     setMyReservations(myReservations.filter(street => street !== streetName));
     toast.success(`${streetName} removed from your reservations`);
+  };
+
+  // Group collection functions
+  const addStudentToGroup = () => {
+    if (selectedStudent && !groupStudents.find(s => s.id === selectedStudent.id)) {
+      setGroupStudents(prev => [...prev, selectedStudent]);
+      setSelectedStudent(null);
+    }
+  };
+
+  const removeStudentFromGroup = (studentId: string) => {
+    setGroupStudents(prev => prev.filter(s => s.id !== studentId));
+  };
+
+  const handleGroupReserve = async () => {
+    if (!selectedPlace || groupStudents.length === 0) return;
+
+    try {
+      const groupNames = groupStudents.map(s => `${s.first_name} ${s.last_name}`).join(', ');
+      const response = await api.post(API_ENDPOINTS.EVENTS.MAP_RESERVATIONS(eventId), {
+        street_name: selectedPlace.name,
+        student_id: studentId,
+        student_name: studentName,
+        group_members: groupNames,
+        geojson: JSON.stringify({ 
+          lat: selectedPlace.lat, 
+          lng: selectedPlace.lng, 
+          group: groupNames 
+        }),
+      });
+
+      if (response.data) {
+        setMyReservations(prev => [...prev, selectedPlace.name]);
+        setSelectedPlace(null);
+        setShowInfo(false);
+        setGroupStudents([]);
+        loadReservations();
+        toast.success(`Group reservation successful! Reserved for: ${groupNames}`);
+      }
+    } catch (error) {
+      console.error('Error making group reservation:', error);
+      toast.error('Failed to make group reservation');
+    }
   };
 
   if (!isLoaded) {
@@ -214,19 +274,126 @@ const MapReservation = ({ eventId, studentId, studentName, groupMembers, onCompl
             position={{ lat: selectedPlace.lat, lng: selectedPlace.lng }}
             onCloseClick={() => setShowInfo(false)}
           >
-            <Paper elevation={0} sx={{ p: 2, minWidth: 200 }}>
-              <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 700 }}>
+            <Paper elevation={0} sx={{ p: 2, minWidth: 300 }}>
+              <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 700 }}>
                 {selectedPlace.name}
               </Typography>
-              <Button
-                fullWidth
-                variant="contained"
-                size="small"
-                onClick={handleReserve}
-                sx={{ background: 'linear-gradient(135deg, hsl(142, 76%, 36%) 0%, hsl(142, 76%, 46%) 100%)' }}
-              >
-                Reserve This Street
-              </Button>
+              
+              {/* Show all students who reserved this street */}
+              {(() => {
+                const streetReservations = reservations.filter(r => r.street_name === selectedPlace.name);
+                if (streetReservations.length > 0) {
+                  return (
+                    <Box sx={{ mb: 2, p: 1, bgcolor: 'grey.100', borderRadius: 1 }}>
+                      <Typography variant="caption" sx={{ fontWeight: 600, mb: 1, display: 'block' }}>
+                        Reserved by:
+                      </Typography>
+                      <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+                        {streetReservations.map((res, index) => (
+                          <Chip
+                            key={index}
+                            label={res.studentName || res.name || 'Unknown'}
+                            size="small"
+                            color="primary"
+                            variant="outlined"
+                          />
+                        ))}
+                      </Stack>
+                    </Box>
+                  );
+                }
+                return null;
+              })()}
+              
+              {/* Group Collection Toggle */}
+              <Box sx={{ mb: 2 }}>
+                <Button
+                  fullWidth
+                  variant={showGroupCollection ? "contained" : "outlined"}
+                  size="small"
+                  onClick={() => setShowGroupCollection(!showGroupCollection)}
+                  startIcon={<Person />}
+                  sx={{ mb: 1 }}
+                >
+                  {showGroupCollection ? 'Individual Collection' : 'Group Collection'}
+                </Button>
+              </Box>
+
+              {showGroupCollection ? (
+                <Box>
+                  {/* Student Selection */}
+                  <MuiAutocomplete
+                    options={students}
+                    getOptionLabel={(option) => `${option.first_name} ${option.last_name}`}
+                    value={selectedStudent}
+                    onChange={(_, newValue) => setSelectedStudent(newValue)}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        label="Select Student"
+                        size="small"
+                        fullWidth
+                        sx={{ mb: 1 }}
+                      />
+                    )}
+                  />
+                  
+                  {/* Add Student Button */}
+                  <Button
+                    fullWidth
+                    variant="outlined"
+                    size="small"
+                    onClick={addStudentToGroup}
+                    startIcon={<Add />}
+                    disabled={!selectedStudent}
+                    sx={{ mb: 2 }}
+                  >
+                    Add Student
+                  </Button>
+
+                  {/* Group Members */}
+                  {groupStudents.length > 0 && (
+                    <Box sx={{ mb: 2 }}>
+                      <Typography variant="caption" sx={{ fontWeight: 600, mb: 1, display: 'block' }}>
+                        Group Members:
+                      </Typography>
+                      <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+                        {groupStudents.map((student) => (
+                          <Chip
+                            key={student.id}
+                            label={`${student.first_name} ${student.last_name}`}
+                            size="small"
+                            onDelete={() => removeStudentFromGroup(student.id)}
+                            deleteIcon={<Close />}
+                          />
+                        ))}
+                      </Stack>
+                    </Box>
+                  )}
+
+                  {/* Group Reserve Button */}
+                  <Button
+                    fullWidth
+                    variant="contained"
+                    size="small"
+                    onClick={handleGroupReserve}
+                    disabled={groupStudents.length === 0}
+                    sx={{ background: 'linear-gradient(135deg, hsl(142, 76%, 36%) 0%, hsl(142, 76%, 46%) 100%)' }}
+                  >
+                    Reserve for Group ({groupStudents.length})
+                  </Button>
+                </Box>
+              ) : (
+                <Button
+                  fullWidth
+                  variant="contained"
+                  size="small"
+                  onClick={handleReserve}
+                  sx={{ background: 'linear-gradient(135deg, hsl(142, 76%, 36%) 0%, hsl(142, 76%, 46%) 100%)' }}
+                >
+                  Reserve This Street
+                </Button>
+              )}
             </Paper>
           </InfoWindow>
         )}

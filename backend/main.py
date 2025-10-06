@@ -413,9 +413,22 @@ def get_leaderboard():
         # Add teacher contributions to their homerooms
         for teacher in teachers:
             if teacher.homeroom_number:
-                # Use the same format as students for consistency
-                key = f"{teacher.full_name} {teacher.homeroom_number}".strip()
-                class_groups[key] += teacher.total_cans or 0
+                # Try to match with existing class keys first
+                teacher_name = teacher.full_name or f"{teacher.first_name} {teacher.last_name}".strip()
+                room = teacher.homeroom_number
+                
+                # Look for existing class with same room number
+                found_existing = False
+                for existing_key in class_groups.keys():
+                    if room in existing_key:
+                        class_groups[existing_key] += teacher.total_cans or 0
+                        found_existing = True
+                        break
+                
+                # If no existing class found, create new one
+                if not found_existing:
+                    key = f"{teacher_name} {room}".strip()
+                    class_groups[key] += teacher.total_cans or 0
         
         classes_sorted = sorted(class_groups.items(), key=lambda x: x[1], reverse=True)
         top_classes = []
@@ -465,6 +478,124 @@ def get_leaderboard():
             "totalCans": 0,
             "error": str(e)
         }
+
+@app.get("/api/events/1/leaderboard/csv")
+def export_leaderboard_csv():
+    """Export leaderboard data as CSV"""
+    from database import get_db
+    from models import Student, Teacher
+    from collections import defaultdict
+    import csv
+    import io
+    
+    try:
+        # Get database connection
+        db = next(get_db())
+        
+        # Get all students and teachers for event 1
+        students = db.query(Student).filter(Student.event_id == 1).all()
+        teachers = db.query(Teacher).filter(Teacher.event_id == 1).all()
+        
+        # Create CSV content
+        output = io.StringIO()
+        writer = csv.writer(output)
+        
+        # Write header
+        writer.writerow(['Category', 'Rank', 'Name', 'Grade/Class', 'Total Cans'])
+        
+        # Top Students
+        students_sorted = sorted(students, key=lambda s: s.total_cans or 0, reverse=True)
+        for i, student in enumerate(students_sorted[:50]):
+            writer.writerow([
+                'Student',
+                i + 1,
+                f"{student.first_name} {student.last_name}".strip(),
+                f"Grade {student.grade}",
+                student.total_cans or 0
+            ])
+        
+        # Top Teachers
+        teachers_sorted = sorted(teachers, key=lambda t: t.total_cans or 0, reverse=True)
+        for i, teacher in enumerate(teachers_sorted[:50]):
+            writer.writerow([
+                'Teacher',
+                i + 1,
+                teacher.full_name or f"{teacher.first_name} {teacher.last_name}".strip(),
+                f"Room {teacher.homeroom_number}" if teacher.homeroom_number else "No Room",
+                teacher.total_cans or 0
+            ])
+        
+        # Top Classes
+        class_groups = defaultdict(int)
+        
+        # Add student contributions to their classes
+        for student in students:
+            if student.homeroom_teacher and student.homeroom_number:
+                key = f"{student.homeroom_teacher} {student.homeroom_number}".strip()
+                class_groups[key] += student.total_cans or 0
+        
+        # Add teacher contributions to their homerooms
+        for teacher in teachers:
+            if teacher.homeroom_number:
+                teacher_name = teacher.full_name or f"{teacher.first_name} {teacher.last_name}".strip()
+                room = teacher.homeroom_number
+                
+                found_existing = False
+                for existing_key in class_groups.keys():
+                    if room in existing_key:
+                        class_groups[existing_key] += teacher.total_cans or 0
+                        found_existing = True
+                        break
+                
+                if not found_existing:
+                    key = f"{teacher_name} {room}".strip()
+                    class_groups[key] += teacher.total_cans or 0
+        
+        classes_sorted = sorted(class_groups.items(), key=lambda x: x[1], reverse=True)
+        for i, (class_name, cans) in enumerate(classes_sorted[:50]):
+            writer.writerow([
+                'Class',
+                i + 1,
+                class_name,
+                '',
+                cans
+            ])
+        
+        # Top Grades
+        grade_groups = defaultdict(int)
+        for student in students:
+            grade = str(student.grade or '').strip()
+            grade_groups[grade] += student.total_cans or 0
+        
+        grades_sorted = sorted(grade_groups.items(), key=lambda x: x[1], reverse=True)
+        for i, (grade, cans) in enumerate(grades_sorted[:50]):
+            writer.writerow([
+                'Grade',
+                i + 1,
+                f"Grade {grade}",
+                '',
+                cans
+            ])
+        
+        # Return CSV content
+        csv_content = output.getvalue()
+        output.close()
+        
+        from fastapi.responses import Response
+        return Response(
+            content=csv_content,
+            media_type="text/csv",
+            headers={"Content-Disposition": "attachment; filename=leaderboard.csv"}
+        )
+        
+    except Exception as e:
+        print(f"CSV export error: {e}")
+        from fastapi.responses import Response
+        return Response(
+            content=f"Error exporting CSV: {str(e)}",
+            media_type="text/plain",
+            status_code=500
+        )
 
 @app.get("/api/events/1/donations")
 def list_donations_direct():
