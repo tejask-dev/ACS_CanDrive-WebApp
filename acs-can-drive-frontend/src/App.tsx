@@ -9,6 +9,7 @@ import CssBaseline from '@mui/material/CssBaseline';
 import Landing from "@/components/pages/Landing";
 import StudentSignup from "@/components/pages/StudentSignup";
 import TeacherSignup from "@/components/pages/TeacherSignup";
+import TeacherMapReservation from "@/components/pages/TeacherMapReservation";
 import Leaderboard from "@/components/pages/Leaderboard";
 import AdminLogin from "@/components/pages/AdminLogin";
 import AdminDashboard from "@/components/admin/AdminDashboard";
@@ -86,6 +87,7 @@ const App = () => (
             <Route path="/" element={<Landing />} />
             <Route path="/signup" element={<StudentSignup />} />
             <Route path="/teacher-signup" element={<TeacherSignup />} />
+            <Route path="/teacher-map-reservation" element={<TeacherMapReservation />} />
             <Route path="/leaderboard" element={<Leaderboard />} />
             <Route path="/admin/login" element={<AdminLogin />} />
             <Route path="/admin/dashboard" element={<AdminDashboard />} />

@@ -81,8 +81,26 @@ def health_check():
         db = get_db_with_retry(max_retries=1, delay=0.5)
         # Simple query to test connection
         db.execute("SELECT 1")
+        
+        # Test basic table access
+        from models import Student, Teacher, Donation, MapReservation
+        student_count = db.query(Student).count()
+        teacher_count = db.query(Teacher).count()
+        donation_count = db.query(Donation).count()
+        reservation_count = db.query(MapReservation).count()
+        
         db.close()
-        return {"status": "healthy", "database": "connected", "msg": "ACS Can Drive API running"}
+        return {
+            "status": "healthy", 
+            "database": "connected", 
+            "msg": "ACS Can Drive API running",
+            "data_counts": {
+                "students": student_count,
+                "teachers": teacher_count,
+                "donations": donation_count,
+                "reservations": reservation_count
+            }
+        }
     except Exception as e:
         return {"status": "unhealthy", "database": "disconnected", "error": str(e)}
 

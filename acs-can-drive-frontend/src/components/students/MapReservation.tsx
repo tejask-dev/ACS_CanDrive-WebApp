@@ -26,9 +26,10 @@ interface MapReservationProps {
   studentId: string;
   studentName: string;
   onComplete: () => void;
+  isTeacher?: boolean;
 }
 
-const MapReservation = ({ eventId, studentId, studentName, onComplete }: MapReservationProps) => {
+const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher = false }: MapReservationProps) => {
   const { isLoaded } = useJsApiLoader({
     id: 'google-map-script',
     googleMapsApiKey: GOOGLE_MAPS_API_KEY,
@@ -100,13 +101,19 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete }: MapRese
     if (!selectedPlace) return;
 
     try {
-      const response = await api.post(API_ENDPOINTS.EVENTS.MAP_RESERVATIONS(eventId), {
-        student_id: Number(studentId),
+      const payload: any = {
         name: studentName,
         street_name: selectedPlace.name,
         group_members: '',  // Individual reservation, no group members
         geojson: JSON.stringify({ lat: selectedPlace.lat, lng: selectedPlace.lng, group: '' }),
-      });
+      };
+      
+      // For teachers, don't send student_id
+      if (!isTeacher) {
+        payload.student_id = Number(studentId);
+      }
+      
+      const response = await api.post(API_ENDPOINTS.EVENTS.MAP_RESERVATIONS(eventId), payload);
 
       // Check if the response indicates an error
       if (response.data.error) {
@@ -151,9 +158,8 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete }: MapRese
 
     try {
       const groupNames = groupStudents.map(s => `${s.first_name} ${s.last_name}`).join(', ');
-      const response = await api.post(API_ENDPOINTS.EVENTS.MAP_RESERVATIONS(eventId), {
+      const payload: any = {
         street_name: selectedPlace.name,
-        student_id: studentId,
         student_name: studentName,
         group_members: groupNames,
         geojson: JSON.stringify({ 
@@ -161,7 +167,14 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete }: MapRese
           lng: selectedPlace.lng, 
           group: groupNames 
         }),
-      });
+      };
+      
+      // For teachers, don't send student_id
+      if (!isTeacher) {
+        payload.student_id = studentId;
+      }
+      
+      const response = await api.post(API_ENDPOINTS.EVENTS.MAP_RESERVATIONS(eventId), payload);
 
       if (response.data) {
         setMyReservations(prev => [...prev, selectedPlace.name]);
@@ -305,21 +318,23 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete }: MapRese
                 return null;
               })()}
               
-              {/* Group Collection Toggle */}
-              <Box sx={{ mb: 2 }}>
-                <Button
-                  fullWidth
-                  variant={showGroupCollection ? "contained" : "outlined"}
-                  size="small"
-                  onClick={() => setShowGroupCollection(!showGroupCollection)}
-                  startIcon={<Person />}
-                  sx={{ mb: 1 }}
-                >
-                  {showGroupCollection ? 'Individual Collection' : 'Group Collection'}
-                </Button>
-              </Box>
+              {/* Group Collection Toggle - Hidden for teachers */}
+              {!isTeacher && (
+                <Box sx={{ mb: 2 }}>
+                  <Button
+                    fullWidth
+                    variant={showGroupCollection ? "contained" : "outlined"}
+                    size="small"
+                    onClick={() => setShowGroupCollection(!showGroupCollection)}
+                    startIcon={<Person />}
+                    sx={{ mb: 1 }}
+                  >
+                    {showGroupCollection ? 'Individual Collection' : 'Group Collection'}
+                  </Button>
+                </Box>
+              )}
 
-              {showGroupCollection ? (
+              {!isTeacher && showGroupCollection ? (
                 <Box>
                   {/* Student Selection */}
                   <MuiAutocomplete

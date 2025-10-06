@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Typography,
@@ -22,6 +23,7 @@ interface TeacherOption {
 }
 
 const TeacherSignup = () => {
+  const navigate = useNavigate();
   const [teacherOptions, setTeacherOptions] = useState<TeacherOption[]>([]);
   const [selectedTeacher, setSelectedTeacher] = useState<TeacherOption | null>(null);
   const [loading, setLoading] = useState(false);
@@ -59,13 +61,17 @@ const TeacherSignup = () => {
 
     setLoading(true);
     try {
-      // For teacher signup, we just need to verify they exist in the system
-      // No additional signup process needed since teachers are pre-loaded
-      toast.success(`Welcome ${selectedTeacher.name}! You can now make donations and view the leaderboard.`);
+      // Store teacher info in session storage for the map page
+      sessionStorage.setItem('selectedTeacher', JSON.stringify({
+        id: selectedTeacher.id,
+        name: selectedTeacher.name,
+        homeroomNumber: selectedTeacher.homeroomNumber
+      }));
       
-      // Reset form
-      setSelectedTeacher(null);
-      setSearchQuery('');
+      toast.success(`Welcome ${selectedTeacher.name}! Redirecting to street reservation...`);
+      
+      // Redirect to teacher map reservation page
+      navigate('/teacher-map-reservation');
     } catch (error) {
       console.error('Error during teacher signup:', error);
       toast.error('Failed to complete signup');
