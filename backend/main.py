@@ -615,17 +615,19 @@ def add_donation_direct(payload: dict):
     try:
         db = next(get_db())
         
-        # Create donation with Eastern timezone
+        # Create donation with Eastern timezone converted to UTC for storage
         from datetime import datetime, timezone, timedelta
         eastern_tz = timezone(timedelta(hours=-4))  # EDT (Eastern Daylight Time)
         now_eastern = datetime.now(eastern_tz)
+        # Convert to UTC for database storage
+        now_utc = now_eastern.astimezone(timezone.utc)
         
         donation = Donation(
             event_id=1,
             student_id=payload.get('student_id'),
             teacher_id=payload.get('teacher_id'),
             amount=payload.get('amount', 0),
-            donation_date=now_eastern
+            donation_date=now_utc
         )
         
         db.add(donation)
@@ -1042,15 +1044,27 @@ def get_daily_donors():
         eastern_tz = timezone(timedelta(hours=-4))  # EDT (Eastern Daylight Time)
         today = datetime.now(eastern_tz).date()
         
-        # Get donations for today in Eastern Time
-        start_of_day = datetime.combine(today, datetime.min.time()).replace(tzinfo=eastern_tz)
-        end_of_day = datetime.combine(today, datetime.max.time()).replace(tzinfo=eastern_tz)
+        # Convert Eastern time to UTC for database query
+        # Database stores in UTC, so we need to convert our Eastern time range to UTC
+        start_of_day_eastern = datetime.combine(today, datetime.min.time()).replace(tzinfo=eastern_tz)
+        end_of_day_eastern = datetime.combine(today, datetime.max.time()).replace(tzinfo=eastern_tz)
+        
+        # Convert to UTC for database comparison
+        start_of_day_utc = start_of_day_eastern.astimezone(timezone.utc)
+        end_of_day_utc = end_of_day_eastern.astimezone(timezone.utc)
         
         today_donations = db.query(Donation).filter(
             Donation.event_id == 1,
-            Donation.donation_date >= start_of_day,
-            Donation.donation_date < end_of_day
+            Donation.donation_date >= start_of_day_utc,
+            Donation.donation_date < end_of_day_utc
         ).all()
+        
+        # Debug logging
+        print(f"Daily donors debug:")
+        print(f"Today (Eastern): {today}")
+        print(f"Start of day (UTC): {start_of_day_utc}")
+        print(f"End of day (UTC): {end_of_day_utc}")
+        print(f"Found {len(today_donations)} donations for today")
         
         # Group donations by student/teacher and sum amounts
         student_daily = defaultdict(int)
