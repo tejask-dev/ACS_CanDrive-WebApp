@@ -86,6 +86,76 @@ def health_check():
     except Exception as e:
         return {"status": "unhealthy", "database": "disconnected", "error": str(e)}
 
+@app.post("/api/fix-homeroom-numbers")
+def fix_homeroom_numbers_endpoint():
+    """Fix homeroom numbers from float to proper string format"""
+    from models import Student, Teacher
+    
+    try:
+        db = get_db_with_retry()
+        
+        # Fix student homeroom numbers
+        students = db.query(Student).all()
+        student_fixes = 0
+        
+        for student in students:
+            if student.homeroom_number:
+                # Convert to string and clean up
+                original = student.homeroom_number
+                fixed = str(original).strip()
+                
+                # Remove .0 suffix if present
+                if fixed.endswith('.0'):
+                    fixed = fixed[:-2]
+                
+                # Pad with leading zeros if it's a number (e.g., 18 -> 018)
+                if fixed.isdigit():
+                    # Only pad if it's 1-2 digits (don't pad 118 -> 0118)
+                    if len(fixed) <= 2:
+                        fixed = fixed.zfill(3)  # Pad to 3 digits: 18 -> 018
+                
+                if str(original) != fixed:
+                    student.homeroom_number = fixed
+                    student_fixes += 1
+        
+        # Fix teacher homeroom numbers
+        teachers = db.query(Teacher).all()
+        teacher_fixes = 0
+        
+        for teacher in teachers:
+            if teacher.homeroom_number:
+                # Convert to string and clean up
+                original = teacher.homeroom_number
+                fixed = str(original).strip()
+                
+                # Remove .0 suffix if present
+                if fixed.endswith('.0'):
+                    fixed = fixed[:-2]
+                
+                # Pad with leading zeros if it's a number (e.g., 18 -> 018)
+                if fixed.isdigit():
+                    # Only pad if it's 1-2 digits (don't pad 118 -> 0118)
+                    if len(fixed) <= 2:
+                        fixed = fixed.zfill(3)  # Pad to 3 digits: 18 -> 018
+                
+                if str(original) != fixed:
+                    teacher.homeroom_number = fixed
+                    teacher_fixes += 1
+        
+        # Commit all changes
+        db.commit()
+        
+        return {
+            "success": True,
+            "message": "Homeroom numbers fixed successfully",
+            "student_fixes": student_fixes,
+            "teacher_fixes": teacher_fixes,
+            "total_fixes": student_fixes + teacher_fixes
+        }
+        
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
 @app.options("/{path:path}")
 def options_handler(path: str):
     return {"message": "OK"}
@@ -930,12 +1000,25 @@ async def upload_roster_direct(file: UploadFile = File(...)):
                 continue
 
             def val(index):
-                return (str(row[index]).strip() if (index is not None and index < len(row) and row[index] is not None) else None)
+                value = (str(row[index]).strip() if (index is not None and index < len(row) and row[index] is not None) else None)
+                return value
 
             full_name = val(header_indexes['full_name'])
             grade = val(header_indexes['grade'])
             homeroom_number = val(header_indexes['homeroom_number'])
             homeroom_teacher = val(header_indexes['homeroom_teacher'])
+            
+            # Format homeroom number properly
+            if homeroom_number:
+                # Remove .0 suffix if present
+                if homeroom_number.endswith('.0'):
+                    homeroom_number = homeroom_number[:-2]
+                
+                # Pad with leading zeros if it's a number (e.g., 18 -> 018)
+                if homeroom_number.isdigit():
+                    # Only pad if it's 1-2 digits (don't pad 118 -> 0118)
+                    if len(homeroom_number) <= 2:
+                        homeroom_number = homeroom_number.zfill(3)  # Pad to 3 digits: 18 -> 018
 
             # Parse full name into first and last name
             if not full_name:
@@ -1048,6 +1131,18 @@ async def upload_teachers_direct(file: UploadFile = File(...)):
                 if student.homeroom_teacher and student.homeroom_teacher.strip() == teacher_name:
                     homeroom_number = student.homeroom_number
                     break
+            
+            # Format homeroom number properly if found
+            if homeroom_number:
+                # Remove .0 suffix if present
+                if str(homeroom_number).endswith('.0'):
+                    homeroom_number = str(homeroom_number)[:-2]
+                
+                # Pad with leading zeros if it's a number (e.g., 18 -> 018)
+                if str(homeroom_number).isdigit():
+                    # Only pad if it's 1-2 digits (don't pad 118 -> 0118)
+                    if len(str(homeroom_number)) <= 2:
+                        homeroom_number = str(homeroom_number).zfill(3)  # Pad to 3 digits: 18 -> 018
             
             teacher = Teacher(
                 first_name=first_name,
