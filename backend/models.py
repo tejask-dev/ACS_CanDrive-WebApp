@@ -81,6 +81,7 @@ class MapReservation(Base):
     student_id = Column(Integer, ForeignKey("students.id"), nullable=True)
     name = Column(String)  # for public/students
     street_name = Column(String)
+    group_members = Column(Text, nullable=True)  # Comma-separated list of group member names
     geojson = Column(Text, nullable=True)
     timestamp = Column(DateTime, default=datetime.datetime.utcnow)
     event_id = Column(Integer, ForeignKey("events.id"))

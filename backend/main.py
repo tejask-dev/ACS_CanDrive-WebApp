@@ -682,7 +682,7 @@ def list_map_reservations_direct():
                 "studentId": r.student_id,
                 "studentName": r.name,
                 "streetName": r.street_name,
-                "groupMembers": "",  # No group_members field in current model
+                "groupMembers": r.group_members or "",
                 "latitude": 0,  # Default values since not in current model
                 "longitude": 0,
                 "createdAt": r.timestamp.isoformat() if r.timestamp else None
@@ -716,7 +716,7 @@ def export_map_reservations_csv():
             writer.writerow([
                 r.street_name or '',
                 r.name or '',
-                '',  # No group_members field in current model
+                r.group_members or '',
                 r.timestamp.isoformat() if r.timestamp else ''
             ])
         
@@ -762,6 +762,7 @@ def reserve_street_direct(payload: dict):
             student_id=payload.get('student_id'),
             name=payload.get('name') or payload.get('student_name', 'Unknown'),
             street_name=payload.get('street_name'),
+            group_members=payload.get('group_members', ''),
             geojson=payload.get('geojson', '{}')
         )
         

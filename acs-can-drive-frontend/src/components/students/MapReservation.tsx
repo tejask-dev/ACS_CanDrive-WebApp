@@ -104,7 +104,8 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete }: MapRese
         student_id: Number(studentId),
         name: studentName,
         street_name: selectedPlace.name,
-        geojson: JSON.stringify({ lat: selectedPlace.lat, lng: selectedPlace.lng, group: groupMembers || '' }),
+        group_members: '',  // Individual reservation, no group members
+        geojson: JSON.stringify({ lat: selectedPlace.lat, lng: selectedPlace.lng, group: '' }),
       });
 
       // Check if the response indicates an error
