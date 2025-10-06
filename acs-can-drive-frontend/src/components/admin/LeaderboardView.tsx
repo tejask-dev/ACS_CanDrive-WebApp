@@ -163,50 +163,11 @@ const LeaderboardView = () => {
         
         toast.success('Leaderboard exported successfully!');
         return;
-      }
-      
-      // For other formats, use the existing logic
-      let csvContent = '';
-      
-      if (!data) {
-        toast.error('No data available to export');
-        return;
-      }
-
-      if (tabValue === 0) {
-        // Top Students
-        csvContent = 'Rank,Name,Grade,Homeroom,Cans\n';
-        data.topStudents.forEach(student => {
-          csvContent += `${student.rank},"${student.name}",${student.grade},"${student.homeroomNumber}",${student.totalCans}\n`;
-        });
-      } else if (tabValue === 1) {
-        // Top Classes
-        csvContent = 'Rank,Class Name,Homeroom,Cans\n';
-        data.topClasses.forEach(cls => {
-          csvContent += `${cls.rank},"${cls.name}","${cls.homeroomNumber}",${cls.totalCans}\n`;
-        });
-      } else if (tabValue === 2) {
-        // Top Grades
-        csvContent = 'Rank,Grade,Cans\n';
-        data.topGrades.forEach(grade => {
-          csvContent += `${grade.rank},"Grade ${grade.grade}",${grade.totalCans}\n`;
-        });
-      }
-        
-        // Download CSV
-        const blob = new Blob([csvContent], { type: 'text/csv' });
-        const url = window.URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.setAttribute('download', `leaderboard_${format === 'csv' ? 'students' : tabValue === 1 ? 'classes' : 'grades'}.csv`);
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-        toast.success('CSV exported successfully');
       } else {
         toast.error('Only CSV export is currently supported');
       }
     } catch (error) {
+      console.error('Export error:', error);
       toast.error('Export failed');
     }
   };
