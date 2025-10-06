@@ -79,9 +79,9 @@ const DailyDonors = () => {
   };
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    // Convert to Eastern Time (EST/EDT)
-    return date.toLocaleDateString('en-US', {
+    // Use current date in Eastern Time instead of parsing the backend date
+    const now = new Date();
+    return now.toLocaleDateString('en-US', {
       weekday: 'long',
       year: 'numeric',
       month: 'long',

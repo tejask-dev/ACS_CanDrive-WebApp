@@ -854,7 +854,8 @@ def get_daily_donors():
         db = next(get_db())
         
         # Get today's date in Eastern Time (Windsor, Ontario)
-        eastern_tz = timezone(timedelta(hours=-5))  # EST (adjust to -4 for EDT if needed)
+        # Currently EDT (Eastern Daylight Time) = UTC-4
+        eastern_tz = timezone(timedelta(hours=-4))  # EDT (Eastern Daylight Time)
         today = datetime.now(eastern_tz).date()
         
         # Get donations for today in Eastern Time
