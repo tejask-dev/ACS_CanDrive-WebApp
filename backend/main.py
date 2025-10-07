@@ -36,12 +36,12 @@ def get_db_with_retry(max_retries=3, delay=1):
 
 # Ensure admin user exists on startup
 def ensure_admin_user():
-    from database import get_db
+    from database import SessionLocal
     from models import Admin
     from datetime import datetime
     import hashlib
     try:
-        db = get_db_with_retry()
+        db = SessionLocal()
         existing_admin = db.query(Admin).filter(Admin.username == 'ACS_CanDrive').first()
         if not existing_admin:
             admin = Admin(
@@ -54,6 +54,7 @@ def ensure_admin_user():
             print('✅ Admin user created on startup!')
         else:
             print('✅ Admin user already exists')
+        db.close()
     except Exception as e:
         print(f'❌ Error ensuring admin user: {e}')
 
@@ -61,11 +62,11 @@ ensure_admin_user()
 
 # Ensure event 1 exists on startup
 def ensure_event():
-    from database import get_db
+    from database import SessionLocal
     from models import Event
     from datetime import datetime
     try:
-        db = get_db_with_retry()
+        db = SessionLocal()
         existing_event = db.query(Event).filter(Event.id == 1).first()
         if not existing_event:
             event = Event(
@@ -79,6 +80,7 @@ def ensure_event():
             print('✅ Event 1 created successfully')
         else:
             print('✅ Event 1 already exists')
+        db.close()
     except Exception as e:
         print(f'❌ Error ensuring event: {e}')
 
