@@ -801,17 +801,22 @@ def reserve_street_direct(payload: dict):
             # Extract just the street name (before the first comma) for comparison
             street_name_only = street.split(',')[0].strip() if ',' in street else street
             
+            print(f"Checking street: '{street}' -> street_name_only: '{street_name_only}'")
+            
             # Check for exact street name match in existing reservations
-            # Look for reservations that contain this street name
+            # Look for reservations that contain this exact street name at the beginning
             existing = db.query(MapReservation).filter(
                 MapReservation.event_id == 1,
-                MapReservation.street_name.ilike(f'%{street_name_only}%')
+                MapReservation.street_name.ilike(f'{street_name_only}%')
             ).first()
             
             if existing:
+                print(f"Found existing reservation: '{existing.street_name}' by '{existing.name}'")
                 # Check if it's the same person trying to reserve (allow editing)
                 existing_name = existing.name or existing.student_name or ''
                 current_name = payload.get('name') or payload.get('student_name', '')
+                
+                print(f"Comparing: existing='{existing_name}' vs current='{current_name}'")
                 
                 if existing_name.lower() != current_name.lower():
                     # Different person trying to reserve - block it
