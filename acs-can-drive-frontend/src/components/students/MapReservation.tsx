@@ -146,7 +146,12 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
   };
 
   const handleReserve = () => {
-    if (!selectedPlace) return;
+    console.log('handleReserve called', { selectedPlace, studentName });
+    
+    if (!selectedPlace) {
+      console.log('No selected place');
+      return;
+    }
 
     // Check if this street is already reserved by someone else
     const isAlreadyReserved = reservations.some(r => 
@@ -155,6 +160,7 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
     );
 
     if (isAlreadyReserved) {
+      console.log('Street already reserved');
       toast.error(`${selectedPlace.name} is already reserved by someone else!`);
       setShowInfo(false);
       setSelectedPlace(null);
@@ -162,8 +168,17 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
     }
 
     // Add to temporary streets instead of immediately reserving
-    setTempStreets(prev => [...prev, selectedPlace]);
-    setMyReservations(prev => [...prev, selectedPlace.name]);
+    console.log('Adding to temp streets:', selectedPlace);
+    setTempStreets(prev => {
+      const newStreets = [...prev, selectedPlace];
+      console.log('New temp streets:', newStreets);
+      return newStreets;
+    });
+    setMyReservations(prev => {
+      const newReservations = [...prev, selectedPlace.name];
+      console.log('New my reservations:', newReservations);
+      return newReservations;
+    });
     setShowInfo(false);
     setSelectedPlace(null);
     toast.success(`${selectedPlace.name} added to your selection!`);
@@ -297,7 +312,12 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
   };
 
   const handleGroupReserve = async () => {
-    if (!selectedPlace || groupStudents.length === 0) return;
+    console.log('handleGroupReserve called', { selectedPlace, groupStudents, studentName });
+    
+    if (!selectedPlace || groupStudents.length === 0) {
+      console.log('Missing required data for group reserve');
+      return;
+    }
 
     try {
       const groupNames = groupStudents.map(s => `${s.first_name} ${s.last_name}`).join(', ');
@@ -317,7 +337,9 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
         payload.student_id = studentId;
       }
       
+      console.log('Sending group reservation payload:', payload);
       const response = await api.post(API_ENDPOINTS.EVENTS.MAP_RESERVATIONS(eventId), payload);
+      console.log('Group reservation response:', response.data);
 
       if (response.data) {
         setMyReservations(prev => [...prev, selectedPlace.name]);
@@ -427,15 +449,15 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
           if (!pos) return null;
           const key = r.id || `${r.street_name || r.streetName}-${pos.lat}-${pos.lng}`;
           return (
-            <Marker
+          <Marker
               key={key}
               position={pos}
-              label={{
+            label={{
                 text: getInitials(r.studentName || r.name || ''),
-                color: 'white',
-                fontWeight: 'bold',
-              }}
-              icon={{
+              color: 'white',
+              fontWeight: 'bold',
+            }}
+            icon={{
                 url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
                   <svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
                     <circle cx="20" cy="20" r="18" fill="#ef4444" stroke="white" stroke-width="3"/>
@@ -569,20 +591,27 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
                   </Button>
                 </Box>
               ) : (
-                <Button
-                  fullWidth
-                  variant="contained"
-                  size="small"
-                  onClick={handleReserve}
-                  sx={{ background: 'linear-gradient(135deg, hsl(142, 76%, 36%) 0%, hsl(142, 76%, 46%) 100%)' }}
-                >
-                  Reserve This Street
-                </Button>
+              <Button
+                fullWidth
+                variant="contained"
+                size="small"
+                onClick={handleReserve}
+                sx={{ background: 'linear-gradient(135deg, hsl(142, 76%, 36%) 0%, hsl(142, 76%, 46%) 100%)' }}
+              >
+                Reserve This Street
+              </Button>
               )}
             </Paper>
           </InfoWindow>
         )}
       </GoogleMap>
+
+      {/* Debug Info */}
+      <Box sx={{ p: 2, bgcolor: 'grey.100', borderRadius: 1, mb: 2 }}>
+        <Typography variant="caption">
+          Debug: myReservations.length = {myReservations.length}, tempStreets.length = {tempStreets.length}
+        </Typography>
+      </Box>
 
       {/* My Reservations */}
       <AnimatePresence>
