@@ -9,13 +9,13 @@ SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./can_drive.db")
 
 # Configure connection pool for production
 if SQLALCHEMY_DATABASE_URL.startswith("postgresql"):
-    # PostgreSQL configuration for Render Professional Plan
+    # PostgreSQL configuration for Render Professional Plan - Conservative settings
     engine = create_engine(
         SQLALCHEMY_DATABASE_URL,
-        pool_size=5,  # Increased pool size for professional plan
-        max_overflow=10,  # Allow overflow connections
-        pool_timeout=30,  # 30 second timeout
-        pool_recycle=3600,  # Recycle connections every hour
+        pool_size=3,  # Conservative pool size
+        max_overflow=5,  # Limited overflow connections
+        pool_timeout=60,  # Increased timeout to 60 seconds
+        pool_recycle=1800,  # Recycle connections every 30 minutes
         pool_pre_ping=True,  # Verify connections before use
         connect_args={"sslmode": "require"}
     )
