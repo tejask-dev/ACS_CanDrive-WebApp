@@ -395,16 +395,31 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
     const lat = r?.latitude;
     const lng = r?.longitude;
     if (typeof lat === 'number' && typeof lng === 'number') return { lat, lng };
+    
     try {
       const gj = r?.geojson ? JSON.parse(r.geojson) : {};
-      const pLat = parseFloat(gj.lat);
-      const pLng = parseFloat(gj.lng);
-      if (!Number.isNaN(pLat) && !Number.isNaN(pLng)) return { lat: pLat, lng: pLng };
-    } catch {}
+      
+      // Handle array of coordinates (multiple streets)
+      if (Array.isArray(gj) && gj.length > 0) {
+        const firstStreet = gj[0];
+        const pLat = parseFloat(firstStreet.lat);
+        const pLng = parseFloat(firstStreet.lng);
+        if (!Number.isNaN(pLat) && !Number.isNaN(pLng)) return { lat: pLat, lng: pLng };
+      }
+      
+      // Handle single coordinate object
+      if (gj.lat && gj.lng) {
+        const pLat = parseFloat(gj.lat);
+        const pLng = parseFloat(gj.lng);
+        if (!Number.isNaN(pLat) && !Number.isNaN(pLng)) return { lat: pLat, lng: pLng };
+      }
+    } catch (error) {
+      console.error('Error parsing geojson:', error, r?.geojson);
+    }
     
-    // If no coordinates found, use default Windsor coordinates
-    // This ensures pins always show up
-    return { lat: 42.3149, lng: -83.0364 };
+    // Don't use default coordinates - return null if no coordinates found
+    // This prevents all streets from appearing at the same location
+    return null;
   };
 
   return (
@@ -469,6 +484,10 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
           const r: any = reservation;
           const pos = getLatLng(r);
           console.log('Rendering reservation marker:', { reservation: r, pos });
+          if (!pos) {
+            console.log('No position found for reservation:', r);
+            return null;
+          }
           const key = r.id || `${r.street_name || r.streetName}-${pos.lat}-${pos.lng}`;
           return (
           <Marker

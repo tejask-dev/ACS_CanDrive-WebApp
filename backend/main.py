@@ -699,7 +699,8 @@ def list_map_reservations_direct():
                 "studentName": r.name,
                 "streetName": r.street_name,
                 "groupMembers": r.group_members or "",
-                "latitude": 0,  # Default values since not in current model
+                "geojson": r.geojson or "{}",  # Return the stored geojson data
+                "latitude": 0,  # Keep for compatibility
                 "longitude": 0,
                 "createdAt": r.timestamp.isoformat() if r.timestamp else None
             }
@@ -797,6 +798,7 @@ def reserve_street_direct(payload: dict):
         
         # Check if any of these streets are already reserved
         for street in streets_to_check:
+            # Check for exact street name match in existing reservations
             existing = db.query(MapReservation).filter(
                 MapReservation.event_id == 1,
                 MapReservation.street_name.ilike(f'%{street}%')
@@ -834,6 +836,7 @@ def reserve_street_direct(payload: dict):
             "studentId": reservation.student_id,
             "studentName": reservation.name,
             "streetName": reservation.street_name,
+            "geojson": reservation.geojson or "{}",  # Return the stored geojson data
             "latitude": 0,
             "longitude": 0,
             "createdAt": reservation.timestamp.isoformat() if reservation.timestamp else None
