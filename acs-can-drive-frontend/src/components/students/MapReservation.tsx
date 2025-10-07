@@ -57,6 +57,7 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
     setMap(map);
     loadReservations();
     loadStudents();
+    checkExistingReservation();
   }, []);
 
   // Load students for group collection
@@ -79,6 +80,49 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
       setReservations(response.data);
     } catch (error) {
       console.error('Failed to load reservations:', error);
+    }
+  };
+
+  const checkExistingReservation = async () => {
+    try {
+      const response = await api.get(API_ENDPOINTS.EVENTS.MAP_RESERVATIONS(eventId));
+      const existingReservations = response.data;
+      
+      // Check if this student/teacher already has a reservation
+      const existingReservation = existingReservations.find((res: any) => 
+        res.studentName === studentName || res.name === studentName
+      );
+      
+      if (existingReservation) {
+        // Load existing streets into temporary selection
+        const existingStreets = existingReservation.streetName.split(', ').map((street: string) => {
+          // Try to find coordinates from geojson or use default
+          let lat = 42.3149, lng = -83.0364; // Default Windsor coordinates
+          try {
+            if (existingReservation.geojson) {
+              const geojsonData = JSON.parse(existingReservation.geojson);
+              if (Array.isArray(geojsonData)) {
+                const streetData = geojsonData.find((s: any) => s.name === street);
+                if (streetData) {
+                  lat = streetData.lat;
+                  lng = streetData.lng;
+                }
+              }
+            }
+          } catch (e) {
+            console.error('Error parsing geojson:', e);
+          }
+          
+          return { lat, lng, name: street.trim() };
+        });
+        
+        setTempStreets(existingStreets);
+        setMyReservations(existingStreets.map(s => s.name));
+        
+        toast.info(`You already have a reservation. You can edit it by adding or removing streets.`);
+      }
+    } catch (error) {
+      console.error('Failed to check existing reservations:', error);
     }
   };
 
@@ -126,31 +170,71 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
 
     setIsCompleting(true);
     try {
-      // Create a single reservation with all streets
-      const streetNames = tempStreets.map(street => street.name).join(', ');
-      const geojsonData = tempStreets.map(street => ({
-        lat: street.lat,
-        lng: street.lng,
-        name: street.name
-      }));
+      // Check if this is an edit of existing reservation
+      const existingReservation = reservations.find((res: any) => 
+        res.studentName === studentName || res.name === studentName
+      );
 
-      const payload: any = {
-        name: studentName,
-        street_name: streetNames, // All streets as one entry
-        group_members: showGroupCollection ? groupStudents.map(s => `${s.first_name} ${s.last_name}`).join(', ') : '',
-        geojson: JSON.stringify(geojsonData),
-      };
-      
-      // For teachers, don't send student_id
-      if (!isTeacher) {
-        payload.student_id = Number(studentId);
-      }
-      
-      const response = await api.post(API_ENDPOINTS.EVENTS.MAP_RESERVATIONS(eventId), payload);
+      if (existingReservation) {
+        // Update existing reservation
+        const streetNames = tempStreets.map(street => street.name).join(', ');
+        const geojsonData = tempStreets.map(street => ({
+          lat: street.lat,
+          lng: street.lng,
+          name: street.name
+        }));
 
-      if (response.data.error) {
-        toast.error(response.data.error);
-        return;
+        const payload: any = {
+          name: studentName,
+          street_name: streetNames,
+          group_members: showGroupCollection ? groupStudents.map(s => `${s.first_name} ${s.last_name}`).join(', ') : '',
+          geojson: JSON.stringify(geojsonData),
+        };
+        
+        // For teachers, don't send student_id
+        if (!isTeacher) {
+          payload.student_id = Number(studentId);
+        }
+
+        // Delete old reservation and create new one
+        await api.delete(`${API_ENDPOINTS.EVENTS.MAP_RESERVATIONS(eventId)}/${existingReservation.id}`);
+        const response = await api.post(API_ENDPOINTS.EVENTS.MAP_RESERVATIONS(eventId), payload);
+
+        if (response.data.error) {
+          toast.error(response.data.error);
+          return;
+        }
+
+        toast.success(`Successfully updated your reservation with ${tempStreets.length} street(s)!`);
+      } else {
+        // Create new reservation
+        const streetNames = tempStreets.map(street => street.name).join(', ');
+        const geojsonData = tempStreets.map(street => ({
+          lat: street.lat,
+          lng: street.lng,
+          name: street.name
+        }));
+
+        const payload: any = {
+          name: studentName,
+          street_name: streetNames,
+          group_members: showGroupCollection ? groupStudents.map(s => `${s.first_name} ${s.last_name}`).join(', ') : '',
+          geojson: JSON.stringify(geojsonData),
+        };
+        
+        // For teachers, don't send student_id
+        if (!isTeacher) {
+          payload.student_id = Number(studentId);
+        }
+        
+        const response = await api.post(API_ENDPOINTS.EVENTS.MAP_RESERVATIONS(eventId), payload);
+
+        if (response.data.error) {
+          toast.error(response.data.error);
+          return;
+        }
+
+        toast.success(`Successfully reserved ${tempStreets.length} street(s)!`);
       }
 
       // Clear temporary data
@@ -159,10 +243,9 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
       setGroupStudents([]);
       setShowGroupCollection(false);
       
-      // Reload reservations to show the new grouped reservation
+      // Reload reservations to show the updated reservation
       loadReservations();
       
-      toast.success(`Successfully reserved ${tempStreets.length} street(s)!`);
       onComplete();
     } catch (error: any) {
       console.error('Registration failed:', error);
@@ -179,8 +262,20 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
   // Group collection functions
   const addStudentToGroup = () => {
     if (selectedStudent && !groupStudents.find(s => s.id === selectedStudent.id)) {
+      // Prevent adding yourself as a group member
+      const currentStudentName = studentName.toLowerCase();
+      const selectedStudentName = `${selectedStudent.first_name} ${selectedStudent.last_name}`.toLowerCase();
+      
+      if (currentStudentName === selectedStudentName) {
+        toast.error('You cannot add yourself as a group member. You are already the primary collector.');
+        return;
+      }
+      
       setGroupStudents(prev => [...prev, selectedStudent]);
       setSelectedStudent(null);
+      toast.success(`${selectedStudent.first_name} ${selectedStudent.last_name} added to group`);
+    } else if (selectedStudent) {
+      toast.error('Student already in group');
     }
   };
 

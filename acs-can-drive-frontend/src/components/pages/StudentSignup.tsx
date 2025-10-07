@@ -143,9 +143,23 @@ const StudentSignup = () => {
                 </Typography>
 
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                  <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
-                    Search for your name in the database to verify you're registered for the can drive.
-                  </Typography>
+                  <Alert severity="info" sx={{ mb: 2 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
+                      <strong>Important Instructions:</strong>
+                    </Typography>
+                    <Typography variant="body2" sx={{ mb: 1 }}>
+                      • Search for your name in the database to verify you're registered for the can drive
+                    </Typography>
+                    <Typography variant="body2" sx={{ mb: 1 }}>
+                      • <strong>If you already have a reservation, you can edit it by adding or removing streets</strong>
+                    </Typography>
+                    <Typography variant="body2" sx={{ mb: 1 }}>
+                      • <strong>You cannot add yourself as a group member</strong> - you are already the primary collector
+                    </Typography>
+                    <Typography variant="body2">
+                      • Reserved streets will show red pins with student initials on the map
+                    </Typography>
+                  </Alert>
                   
                   <Autocomplete
                     freeSolo

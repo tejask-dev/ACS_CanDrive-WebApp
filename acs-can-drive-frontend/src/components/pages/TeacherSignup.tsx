@@ -94,8 +94,20 @@ const TeacherSignup = () => {
 
       <Paper sx={{ p: 4, borderRadius: 3, boxShadow: 3 }}>
         <Alert severity="info" sx={{ mb: 3 }}>
+          <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
+            <strong>Important Instructions for Teachers:</strong>
+          </Typography>
+          <Typography variant="body2" sx={{ mb: 1 }}>
+            • Select your name from the list below to access street reservation features
+          </Typography>
+          <Typography variant="body2" sx={{ mb: 1 }}>
+            • <strong>If you already have a reservation, you can edit it by adding or removing streets</strong>
+          </Typography>
+          <Typography variant="body2" sx={{ mb: 1 }}>
+            • <strong>Teachers can only make individual reservations</strong> (no group collection)
+          </Typography>
           <Typography variant="body2">
-            <strong>Teacher Street Access:</strong> Select your name from the list below to access street reservation features.
+            • Reserved streets will show red pins with your initials on the map
           </Typography>
         </Alert>
 

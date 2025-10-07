@@ -1284,6 +1284,13 @@ def get_daily_donors():
         print(f"End of day (UTC): {end_of_day_utc}")
         print(f"Found {len(today_donations)} donations for today")
         
+        # Debug specific donations
+        for donation in today_donations:
+            if donation.student_id:
+                student = db.query(Student).filter(Student.id == donation.student_id).first()
+                if student and "isabella" in student.first_name.lower() and "wang" in student.last_name.lower():
+                    print(f"DEBUG: Isabella Wang donation - Amount: {donation.amount}, Date: {donation.donation_date}, Student ID: {donation.student_id}")
+        
         # Group donations by student/teacher/grade and sum amounts
         student_daily = defaultdict(int)
         teacher_daily = defaultdict(int)
@@ -1294,6 +1301,19 @@ def get_daily_donors():
                 student_daily[donation.student_id] += donation.amount or 0
             elif donation.teacher_id:
                 teacher_daily[donation.teacher_id] += donation.amount or 0
+        
+        # Calculate grade totals for today - get all students with donations
+        if student_daily:
+            students_with_donations = db.query(Student).filter(
+                Student.id.in_(student_daily.keys()),
+                Student.event_id == 1
+            ).all()
+            
+            for student in students_with_donations:
+                daily_amount = student_daily[student.id]
+                grade = str(student.grade or '').strip()
+                if grade:
+                    grade_daily[grade] += daily_amount
         
         # Get top 10 students for today
         top_students = []
@@ -1320,13 +1340,6 @@ def get_daily_donors():
             # Add rank
             for i, student in enumerate(top_students):
                 student["rank"] = i + 1
-                
-            # Calculate grade totals for today
-            for student in students:
-                daily_amount = student_daily[student.id]
-                grade = str(student.grade or '').strip()
-                if grade:
-                    grade_daily[grade] += daily_amount
         
         # Get top grades for today
         top_grades = []
@@ -1423,5 +1436,124 @@ def reset_event_direct(confirm: bool = False):
                 "teachers": teacher_count
             }
         }
+    except Exception as e:
+        return {"error": str(e)}
+
+@app.post("/api/events/1/map-reservations/import")
+async def import_map_reservations_csv(file: UploadFile = File(...)):
+    """Import map reservations from CSV file"""
+    from models import MapReservation
+    import csv
+    import io
+    
+    try:
+        db = get_db_with_retry()
+        
+        # Read CSV content
+        content = await file.read()
+        csv_content = content.decode('utf-8')
+        csv_reader = csv.DictReader(io.StringIO(csv_content))
+        
+        added = 0
+        for row in csv_reader:
+            # Skip if required fields are missing
+            if not row.get('Student Name') or not row.get('Street Name'):
+                continue
+                
+            # Check if reservation already exists
+            existing = db.query(MapReservation).filter(
+                MapReservation.event_id == 1,
+                MapReservation.name == row['Student Name'],
+                MapReservation.street_name == row['Street Name']
+            ).first()
+            
+            if existing:
+                continue  # Skip duplicates
+            
+            # Create new reservation
+            reservation = MapReservation(
+                event_id=1,
+                name=row['Student Name'],
+                street_name=row['Street Name'],
+                group_members=row.get('Group Members', ''),
+                geojson='',  # Will be empty for imported data
+                student_id=None  # Will be None for imported data
+            )
+            
+            db.add(reservation)
+            added += 1
+        
+        db.commit()
+        return {"message": f"Successfully imported {added} reservations", "added": added}
+        
+    except Exception as e:
+        return {"error": str(e)}
+
+@app.get("/api/events/1/leaderboard/csv")
+def export_leaderboard_csv():
+    """Export leaderboard data as CSV"""
+    from models import Student, Teacher, Donation
+    import csv
+    import io
+    
+    try:
+        db = get_db_with_retry()
+        
+        # Get all students and teachers
+        students = db.query(Student).filter(Student.event_id == 1).all()
+        teachers = db.query(Teacher).filter(Teacher.event_id == 1).all()
+        
+        output = io.StringIO()
+        writer = csv.writer(output)
+        
+        # Write header
+        writer.writerow(['Type', 'Name', 'Grade/Homeroom', 'Total Cans', 'Rank'])
+        
+        # Write student data
+        student_rankings = []
+        for student in students:
+            student_rankings.append({
+                'name': f"{student.first_name} {student.last_name}".strip(),
+                'grade': student.grade,
+                'total_cans': student.total_cans or 0
+            })
+        
+        student_rankings.sort(key=lambda x: x['total_cans'], reverse=True)
+        for i, student in enumerate(student_rankings):
+            writer.writerow([
+                'Student',
+                student['name'],
+                f"Grade {student['grade']}" if student['grade'] else '',
+                student['total_cans'],
+                i + 1
+            ])
+        
+        # Write teacher data
+        teacher_rankings = []
+        for teacher in teachers:
+            teacher_rankings.append({
+                'name': teacher.full_name or f"{teacher.first_name} {teacher.last_name}".strip(),
+                'homeroom': teacher.homeroom_number,
+                'total_cans': teacher.total_cans or 0
+            })
+        
+        teacher_rankings.sort(key=lambda x: x['total_cans'], reverse=True)
+        for i, teacher in enumerate(teacher_rankings):
+            writer.writerow([
+                'Teacher',
+                teacher['name'],
+                f"Room {teacher['homeroom']}" if teacher['homeroom'] else '',
+                teacher['total_cans'],
+                i + 1
+            ])
+        
+        output.seek(0)
+        from fastapi.responses import Response
+        return Response(
+            content=output.getvalue(),
+            media_type="text/csv",
+            headers={"Content-Disposition": "attachment; filename=leaderboard.csv"}
+        )
+        
     except Exception as e:
         return {"error": str(e)}

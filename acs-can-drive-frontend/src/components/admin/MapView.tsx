@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Box, Typography, Paper, List, ListItem, ListItemText, Chip, Button, Stack, IconButton, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
-import { Map as MapIcon, FileDownload, Delete, Warning } from '@mui/icons-material';
+import { Map as MapIcon, FileDownload, Delete, Warning, FileUpload } from '@mui/icons-material';
 import { toast } from 'sonner';
 import api from '@/services/api';
 import { API_ENDPOINTS, API_BASE_URL } from '@/config/api';
@@ -10,6 +10,7 @@ const MapView = () => {
   const [reservations, setReservations] = useState<MapReservation[]>([]);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [reservationToDelete, setReservationToDelete] = useState<MapReservation | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     loadReservations();
@@ -53,23 +54,85 @@ const MapView = () => {
     setReservationToDelete(null);
   };
 
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.name.endsWith('.csv')) {
+      toast.error('Please select a CSV file');
+      return;
+    }
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await api.post(`${API_ENDPOINTS.EVENTS.MAP_RESERVATIONS('1')}/import`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      if (response.data.error) {
+        toast.error(response.data.error);
+      } else {
+        toast.success(response.data.message);
+        loadReservations(); // Reload the list
+      }
+    } catch (error) {
+      toast.error('Failed to import reservations');
+      console.error('Import error:', error);
+    }
+
+    // Reset file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
   return (
     <Box>
       <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
         <Typography variant="h4" sx={{ fontWeight: 700 }}>
           Map Reservations
         </Typography>
-        <Button
-          variant="contained"
-          startIcon={<FileDownload />}
-          onClick={handleExport}
-          sx={{
-            background: 'linear-gradient(135deg, hsl(217, 91%, 35%) 0%, hsl(217, 91%, 55%) 100%)',
-          }}
-        >
-          Export CSV
-        </Button>
+        <Stack direction="row" spacing={2}>
+          <Button
+            variant="outlined"
+            startIcon={<FileUpload />}
+            onClick={handleImportClick}
+            sx={{
+              borderColor: 'primary.main',
+              color: 'primary.main',
+            }}
+          >
+            Import CSV
+          </Button>
+          <Button
+            variant="contained"
+            startIcon={<FileDownload />}
+            onClick={handleExport}
+            sx={{
+              background: 'linear-gradient(135deg, hsl(217, 91%, 35%) 0%, hsl(217, 91%, 55%) 100%)',
+            }}
+          >
+            Export CSV
+          </Button>
+        </Stack>
       </Stack>
+
+      {/* Hidden file input */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileImport}
+        accept=".csv"
+        style={{ display: 'none' }}
+      />
 
       <Paper sx={{ p: 3 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
