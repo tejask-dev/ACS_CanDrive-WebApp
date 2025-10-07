@@ -22,11 +22,12 @@ init_db()
 def get_db_with_retry(max_retries=3, delay=1):
     """Get database connection with retry logic for connection pool issues"""
     from database import SessionLocal
+    from sqlalchemy import text
     for attempt in range(max_retries):
         try:
             db = SessionLocal()
             # Test the connection
-            db.execute("SELECT 1")
+            db.execute(text("SELECT 1"))
             return db
         except (TimeoutError, OperationalError) as e:
             if attempt == max_retries - 1:
@@ -107,10 +108,11 @@ def favicon():
 @app.get("/health")
 def health_check():
     """Health check endpoint to monitor database connectivity"""
+    from sqlalchemy import text
     try:
         db = get_db_with_retry(max_retries=1, delay=0.5)
         # Simple query to test connection
-        db.execute("SELECT 1")
+        db.execute(text("SELECT 1"))
         
         # Test basic table access
         from models import Student, Teacher, Donation, MapReservation
