@@ -3,8 +3,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from database import init_db, get_db
 from routers import admin, events, students, donations, map_reservations
 import os
-import time
-from sqlalchemy.exc import TimeoutError, OperationalError
 
 app = FastAPI()
 
@@ -18,38 +16,11 @@ app.add_middleware(
 
 init_db()
 
-# Database retry helper
-def get_db_with_retry(max_retries=3, delay=1):
-    """Get database connection with retry logic for connection pool issues"""
-    from database import SessionLocal
-    from sqlalchemy import text
-    for attempt in range(max_retries):
-        db = None
-        try:
-            db = SessionLocal()
-            # Test the connection
-            db.execute(text("SELECT 1"))
-            return db
-        except (TimeoutError, OperationalError) as e:
-            if db:
-                try:
-                    db.close()
-                except:
-                    pass
-            if attempt == max_retries - 1:
-                print(f"Database connection failed after {max_retries} attempts: {e}")
-                raise HTTPException(status_code=503, detail="Database temporarily unavailable")
-            print(f"Database connection attempt {attempt + 1} failed, retrying in {delay} seconds...")
-            time.sleep(delay)
-            delay *= 2  # Exponential backoff
-        except Exception as e:
-            if db:
-                try:
-                    db.close()
-                except:
-                    pass
-            raise e
-    return None
+# Simple database helper for SQLite
+def get_db_simple():
+    """Get database connection - simple for SQLite"""
+    from database import get_db
+    return next(get_db())
 
 # Ensure admin user exists on startup
 def ensure_admin_user():
@@ -155,7 +126,7 @@ def fix_homeroom_numbers_endpoint():
     from models import Student, Teacher
     
     try:
-        db = get_db_with_retry()
+        db = get_db_simple()
         
         # Fix student homeroom numbers
         students = db.query(Student).all()
@@ -228,7 +199,7 @@ def debug_admin():
     from database import get_db
     from models import Admin
     try:
-        db = get_db_with_retry()
+        db = get_db_simple()
         admin = db.query(Admin).filter(Admin.username == 'ACS_CanDrive').first()
         if admin:
             return {
@@ -247,7 +218,7 @@ def test_students(grade: str = None, homeroom: str = None, name: str = None, tea
     from database import get_db
     from models import Student
     try:
-        db = get_db_with_retry()
+        db = get_db_simple()
         students = db.query(Student).filter(Student.event_id == 1).all()
         return {
             "count": len(students),
@@ -277,7 +248,7 @@ def debug_students():
     from database import get_db
     from models import Student
     try:
-        db = get_db_with_retry()
+        db = get_db_simple()
         students = db.query(Student).filter(Student.event_id == 1).all()
         return {
             "count": len(students),
@@ -300,7 +271,7 @@ def search_students_direct(q: str):
     from database import get_db
     from models import Student
     try:
-        db = get_db_with_retry()
+        db = get_db_simple()
         query = db.query(Student).filter(Student.event_id == 1)
         
         # Search by name (first_name + last_name)
@@ -329,7 +300,7 @@ def verify_student_direct(payload: dict):
     from database import get_db
     from models import Student
     try:
-        db = get_db_with_retry()
+        db = get_db_simple()
         
         # Accept flexible payload shapes from frontend
         name = (payload.get('name') or '').strip()
@@ -393,7 +364,7 @@ def debug_students():
     from database import get_db
     from models import Student
     try:
-        db = get_db_with_retry()
+        db = get_db_simple()
         students = db.query(Student).all()
         print(f"DEBUG: Found {len(students)} total students")
         for s in students[:5]:  # Print first 5 students
@@ -417,7 +388,7 @@ def debug_database():
     from models import Student, Event
     try:
         print("DEBUG: Testing database connection...")
-        db = get_db_with_retry()
+        db = get_db_simple()
         
         # Test basic query
         student_count = db.query(Student).count()
@@ -458,7 +429,7 @@ def debug_leaderboard():
     from collections import defaultdict
     try:
         print("DEBUG: Starting debug leaderboard...")
-        db = get_db_with_retry()
+        db = get_db_simple()
         students = db.query(Student).all()
         print(f"DEBUG: Found {len(students)} students")
         
@@ -522,7 +493,7 @@ def get_leaderboard():
     
     try:
         # Get database connection with retry
-        db = get_db_with_retry()
+        db = get_db_simple()
         
         # Test connection first
         db.execute(text("SELECT 1"))
@@ -657,7 +628,7 @@ def export_leaderboard_csv():
     
     try:
         # Get database connection
-        db = get_db_with_retry()
+        db = get_db_simple()
         
         # Get all students and teachers for event 1
         students = db.query(Student).filter(Student.event_id == 1).all()
@@ -769,7 +740,7 @@ def list_donations_direct():
     from database import get_db
     from models import Donation
     try:
-        db = get_db_with_retry()
+        db = get_db_simple()
         donations = db.query(Donation).filter(Donation.event_id == 1).all()
         return donations
     except Exception as e:
@@ -780,7 +751,7 @@ def add_donation_direct(payload: dict):
     from database import get_db
     from models import Donation, Student, Teacher
     try:
-        db = get_db_with_retry()
+        db = get_db_simple()
         
         # Create donation with Eastern timezone converted to UTC for storage
         from datetime import datetime, timezone, timedelta
@@ -835,7 +806,7 @@ def list_map_reservations_direct():
     from database import get_db
     from models import MapReservation
     try:
-        db = get_db_with_retry()
+        db = get_db_simple()
         reservations = db.query(MapReservation).filter(MapReservation.event_id == 1).all()
         return [
             {
@@ -859,7 +830,7 @@ def delete_map_reservation_direct(reservation_id: int):
     """Delete a map reservation for event 1"""
     from models import MapReservation
     try:
-        db = get_db_with_retry()
+        db = get_db_simple()
         
         # Find the reservation
         reservation = db.query(MapReservation).filter(
@@ -887,7 +858,7 @@ def export_map_reservations_csv():
     import io
     
     try:
-        db = get_db_with_retry()
+        db = get_db_simple()
         reservations = db.query(MapReservation).filter(MapReservation.event_id == 1).all()
         
         # Create CSV content
@@ -931,7 +902,7 @@ def reserve_street_direct(payload: dict):
     from database import get_db
     from models import MapReservation
     try:
-        db = get_db_with_retry()
+        db = get_db_simple()
         
         # Check if street is already reserved
         existing = db.query(MapReservation).filter(
@@ -979,7 +950,7 @@ def get_students_direct(grade: str = None, homeroom: str = None, name: str = Non
     from models import Student
     from sqlalchemy import String
     try:
-        db = get_db_with_retry()
+        db = get_db_simple()
         query = db.query(Student).filter(Student.event_id == 1)
         
         # Apply filters
@@ -1017,7 +988,7 @@ def update_student_direct(student_id: int, payload: dict):
     """Update student data for event 1"""
     from models import Student
     try:
-        db = get_db_with_retry()
+        db = get_db_simple()
         
         # Find the student
         student = db.query(Student).filter(
@@ -1064,7 +1035,7 @@ def get_teachers_direct():
     from database import get_db
     from models import Teacher
     try:
-        db = get_db_with_retry()
+        db = get_db_simple()
         teachers = db.query(Teacher).filter(Teacher.event_id == 1).all()
         return [
             {
@@ -1087,7 +1058,7 @@ def create_admin():
     from datetime import datetime
     import hashlib
     try:
-        db = get_db_with_retry()
+        db = get_db_simple()
         
         # Check if admin already exists
         existing_admin = db.query(Admin).filter(Admin.username == 'ACS_CanDrive').first()
@@ -1112,7 +1083,7 @@ async def upload_roster_direct(file: UploadFile = File(...)):
     import openpyxl
     from io import BytesIO
     try:
-        db = get_db_with_retry()
+        db = get_db_simple()
         content = await file.read()
         wb = openpyxl.load_workbook(BytesIO(content), data_only=True)
         sheet = wb.active
@@ -1214,7 +1185,7 @@ async def upload_teachers_direct(file: UploadFile = File(...)):
     import openpyxl
     from io import BytesIO
     try:
-        db = get_db_with_retry()
+        db = get_db_simple()
         content = await file.read()
         wb = openpyxl.load_workbook(BytesIO(content), data_only=True)
         sheet = wb.active
@@ -1307,7 +1278,7 @@ def get_daily_donors():
     from sqlalchemy import text
     
     try:
-        db = get_db_with_retry()
+        db = get_db_simple()
         
         # Test connection first
         db.execute(text("SELECT 1"))
@@ -1472,7 +1443,7 @@ def reset_event_direct(confirm: bool = False):
         if not confirm:
             return {"error": "Reset requires confirmation. Add ?confirm=true to the request."}
             
-        db = get_db_with_retry()
+        db = get_db_simple()
         
         # Count existing data before deletion
         student_count = db.query(Student).filter(Student.event_id == 1).count()
@@ -1510,7 +1481,7 @@ async def import_map_reservations_csv(file: UploadFile = File(...)):
     import io
     
     try:
-        db = get_db_with_retry()
+        db = get_db_simple()
         
         # Read CSV content
         content = await file.read()
@@ -1560,7 +1531,7 @@ def export_leaderboard_csv():
     import io
     
     try:
-        db = get_db_with_retry()
+        db = get_db_simple()
         
         # Get all students and teachers
         students = db.query(Student).filter(Student.event_id == 1).all()

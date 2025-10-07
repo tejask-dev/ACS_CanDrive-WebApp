@@ -7,31 +7,15 @@ import jwt
 from datetime import datetime, timedelta
 import os
 import hashlib
-import time
-from sqlalchemy.exc import TimeoutError, OperationalError
 
 SECRET_KEY = os.getenv("SECRET_KEY", "supersecret")
 router = APIRouter()
 
-# Database retry helper for admin operations
-def get_db_with_retry(max_retries=3, delay=1):
-    """Get database connection with retry logic for connection pool issues"""
-    from database import SessionLocal
-    from sqlalchemy import text
-    for attempt in range(max_retries):
-        try:
-            db = SessionLocal()
-            # Test the connection
-            db.execute(text("SELECT 1"))
-            return db
-        except (TimeoutError, OperationalError) as e:
-            if attempt == max_retries - 1:
-                print(f"Admin database connection failed after {max_retries} attempts: {e}")
-                raise HTTPException(status_code=503, detail="Database temporarily unavailable")
-            print(f"Admin database connection attempt {attempt + 1} failed, retrying in {delay} seconds...")
-            time.sleep(delay)
-            delay *= 2  # Exponential backoff
-    return None
+# Simple database helper for admin operations
+def get_db_simple():
+    """Get database connection - simple for SQLite"""
+    from database import get_db
+    return next(get_db())
 
 def create_access_token(data: dict, expires_delta: timedelta = timedelta(hours=8)):
     to_encode = data.copy()
@@ -42,7 +26,7 @@ def create_access_token(data: dict, expires_delta: timedelta = timedelta(hours=8
 @router.post("/login")
 def login(payload: AdminLogin):
     try:
-        db = get_db_with_retry()
+        db = get_db_simple()
         admin = db.query(Admin).filter(Admin.username == payload.username).first()
         if not admin:
             raise HTTPException(status_code=401, detail="Invalid credentials")
@@ -63,7 +47,7 @@ def login(payload: AdminLogin):
 @router.post("/change-password")
 def change_password(payload: AdminChangePassword):
     try:
-        db = get_db_with_retry()
+        db = get_db_simple()
         admin = db.query(Admin).filter(Admin.username == payload.username).first()
         if not admin:
             raise HTTPException(status_code=401, detail="Invalid credentials")

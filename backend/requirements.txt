@@ -7,4 +7,3 @@ python-multipart
 openpyxl
 PyJWT
 python-dotenv
-psycopg2-binary
