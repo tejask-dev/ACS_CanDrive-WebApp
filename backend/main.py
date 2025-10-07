@@ -24,18 +24,31 @@ def get_db_with_retry(max_retries=3, delay=1):
     from database import SessionLocal
     from sqlalchemy import text
     for attempt in range(max_retries):
+        db = None
         try:
             db = SessionLocal()
             # Test the connection
             db.execute(text("SELECT 1"))
             return db
         except (TimeoutError, OperationalError) as e:
+            if db:
+                try:
+                    db.close()
+                except:
+                    pass
             if attempt == max_retries - 1:
                 print(f"Database connection failed after {max_retries} attempts: {e}")
                 raise HTTPException(status_code=503, detail="Database temporarily unavailable")
             print(f"Database connection attempt {attempt + 1} failed, retrying in {delay} seconds...")
             time.sleep(delay)
             delay *= 2  # Exponential backoff
+        except Exception as e:
+            if db:
+                try:
+                    db.close()
+                except:
+                    pass
+            raise e
     return None
 
 # Ensure admin user exists on startup
