@@ -77,6 +77,7 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
   const loadReservations = async () => {
     try {
       const response = await api.get(API_ENDPOINTS.EVENTS.MAP_RESERVATIONS(eventId));
+      console.log('Loaded reservations:', response.data);
       setReservations(response.data);
     } catch (error) {
       console.error('Failed to load reservations:', error);
@@ -95,29 +96,34 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
       
       if (existingReservation) {
         // Load existing streets into temporary selection
-        const existingStreets = existingReservation.streetName.split(', ').map((street: string) => {
-          // Try to find coordinates from geojson or use default
-          let lat = 42.3149, lng = -83.0364; // Default Windsor coordinates
-          try {
-            if (existingReservation.geojson) {
-              const geojsonData = JSON.parse(existingReservation.geojson);
-              if (Array.isArray(geojsonData)) {
-                const streetData = geojsonData.find((s: any) => s.name === street);
-                if (streetData) {
-                  lat = streetData.lat;
-                  lng = streetData.lng;
-                }
-              }
+        // Don't split by comma - treat the entire street_name as one street
+        let lat = 42.3149, lng = -83.0364; // Default Windsor coordinates
+        try {
+          if (existingReservation.geojson) {
+            const geojsonData = JSON.parse(existingReservation.geojson);
+            if (Array.isArray(geojsonData) && geojsonData.length > 0) {
+              // Use the first street's coordinates
+              lat = geojsonData[0].lat || lat;
+              lng = geojsonData[0].lng || lng;
+            } else if (geojsonData.lat && geojsonData.lng) {
+              // Single street object
+              lat = geojsonData.lat;
+              lng = geojsonData.lng;
             }
-          } catch (e) {
-            console.error('Error parsing geojson:', e);
           }
-          
-          return { lat, lng, name: street.trim() };
-        });
+        } catch (e) {
+          console.error('Error parsing geojson:', e);
+        }
         
-        setTempStreets(existingStreets);
-        setMyReservations(existingStreets.map(s => s.name));
+        // Treat the entire street_name as one street
+        const existingStreet = { 
+          lat, 
+          lng, 
+          name: existingReservation.streetName.trim() 
+        };
+        
+        setTempStreets([existingStreet]);
+        setMyReservations([existingReservation.streetName.trim()]);
         
         toast.info(`You already have a reservation. You can edit it by adding or removing streets.`);
       }
@@ -154,10 +160,23 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
     }
 
     // Check if this street is already reserved by someone else
-    const isAlreadyReserved = reservations.some(r => 
-      r.street_name.includes(selectedPlace.name) && 
-      (r.studentName !== studentName && r.name !== studentName)
-    );
+    const isAlreadyReserved = reservations.some(r => {
+      const reservedBy = r.studentName || r.name || '';
+      const currentUser = studentName;
+      const streetMatch = r.street_name && r.street_name.includes(selectedPlace.name);
+      const differentUser = reservedBy.toLowerCase() !== currentUser.toLowerCase();
+      
+      console.log('Checking reservation:', { 
+        street: r.street_name, 
+        reservedBy, 
+        currentUser, 
+        streetMatch, 
+        differentUser,
+        isReserved: streetMatch && differentUser
+      });
+      
+      return streetMatch && differentUser;
+    });
 
     if (isAlreadyReserved) {
       console.log('Street already reserved');
@@ -446,7 +465,11 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
         {reservations.map((reservation) => {
           const r: any = reservation;
           const pos = getLatLng(r);
-          if (!pos) return null;
+          console.log('Rendering reservation marker:', { reservation: r, pos });
+          if (!pos) {
+            console.log('No position found for reservation:', r);
+            return null;
+          }
           const key = r.id || `${r.street_name || r.streetName}-${pos.lat}-${pos.lng}`;
           return (
           <Marker
@@ -609,8 +632,13 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
       {/* Debug Info */}
       <Box sx={{ p: 2, bgcolor: 'grey.100', borderRadius: 1, mb: 2 }}>
         <Typography variant="caption">
-          Debug: myReservations.length = {myReservations.length}, tempStreets.length = {tempStreets.length}
+          Debug: myReservations.length = {myReservations.length}, tempStreets.length = {tempStreets.length}, totalReservations = {reservations.length}
         </Typography>
+        {reservations.length > 0 && (
+          <Typography variant="caption" sx={{ display: 'block', mt: 1 }}>
+            Reservations: {reservations.map(r => `${r.street_name || r.streetName} (${r.studentName || r.name})`).join(', ')}
+          </Typography>
+        )}
       </Box>
 
       {/* My Reservations */}
