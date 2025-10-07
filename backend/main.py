@@ -21,9 +21,12 @@ init_db()
 # Database retry helper
 def get_db_with_retry(max_retries=3, delay=1):
     """Get database connection with retry logic for connection pool issues"""
+    from database import SessionLocal
     for attempt in range(max_retries):
         try:
-            db = get_db_with_retry()
+            db = SessionLocal()
+            # Test the connection
+            db.execute("SELECT 1")
             return db
         except (TimeoutError, OperationalError) as e:
             if attempt == max_retries - 1:
