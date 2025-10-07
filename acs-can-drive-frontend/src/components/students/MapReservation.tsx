@@ -215,12 +215,18 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
       return;
     }
 
+    console.log('Completing registration with streets:', tempStreets);
+    console.log('Group collection enabled:', showGroupCollection);
+    console.log('Group students:', groupStudents);
+
     setIsCompleting(true);
     try {
       // Check if this is an edit of existing reservation
       const existingReservation = reservations.find((res: any) => 
         res.studentName === studentName || res.name === studentName
       );
+
+      console.log('Existing reservation found:', existingReservation);
 
       if (existingReservation) {
         // Update existing reservation
@@ -242,7 +248,9 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
         if (!isTeacher) {
           payload.student_id = Number(studentId);
         }
-
+        
+        console.log('Update payload:', payload);
+        
         // Delete old reservation and create new one
         await api.delete(`${API_ENDPOINTS.EVENTS.MAP_RESERVATIONS(eventId)}/${existingReservation.id}`);
         const response = await api.post(API_ENDPOINTS.EVENTS.MAP_RESERVATIONS(eventId), payload);
@@ -273,6 +281,8 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
         if (!isTeacher) {
           payload.student_id = Number(studentId);
         }
+        
+        console.log('Create payload:', payload);
         
         const response = await api.post(API_ENDPOINTS.EVENTS.MAP_RESERVATIONS(eventId), payload);
 
