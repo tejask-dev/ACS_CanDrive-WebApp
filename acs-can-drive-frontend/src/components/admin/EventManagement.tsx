@@ -19,7 +19,7 @@ const EventManagement = () => {
       const res = await api.post(API_ENDPOINTS.EVENTS.UPLOAD_ROSTER('1'), form, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
-      setResult(`Added ${res.data.added} students from ${file.name}.`);
+      setResult(res.data.message || `Added ${res.data.added} students from ${file.name}.`);
     } catch (err) {
       setResult('Upload failed. Please check the file format.');
     } finally {
