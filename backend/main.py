@@ -505,10 +505,14 @@ def get_leaderboard():
     """Get leaderboard data for event 1"""
     from models import Student, Teacher
     from collections import defaultdict
+    from sqlalchemy import text
     
     try:
         # Get database connection with retry
         db = get_db_with_retry()
+        
+        # Test connection first
+        db.execute(text("SELECT 1"))
         
         # Get all students and teachers for event 1
         students = db.query(Student).filter(Student.event_id == 1).all()
@@ -1287,19 +1291,31 @@ def get_daily_donors():
     from models import Donation, Student, Teacher
     from datetime import datetime, date, timezone, timedelta
     from collections import defaultdict
+    from sqlalchemy import text
     
     try:
         db = get_db_with_retry()
         
+        # Test connection first
+        db.execute(text("SELECT 1"))
+        
         # Get today's date in Eastern Time (Windsor, Ontario)
         # Currently EDT (Eastern Daylight Time) = UTC-4
         eastern_tz = timezone(timedelta(hours=-4))  # EDT (Eastern Daylight Time)
-        today = datetime.now(eastern_tz).date()
+        now_eastern = datetime.now(eastern_tz)
+        
+        # Daily reset at 3 AM Eastern Time
+        # If it's before 3 AM, use yesterday's date for the "day"
+        if now_eastern.hour < 3:
+            today = (now_eastern - timedelta(days=1)).date()
+        else:
+            today = now_eastern.date()
         
         # Convert Eastern time to UTC for database query
         # Database stores in UTC, so we need to convert our Eastern time range to UTC
-        start_of_day_eastern = datetime.combine(today, datetime.min.time()).replace(tzinfo=eastern_tz)
-        end_of_day_eastern = datetime.combine(today, datetime.max.time()).replace(tzinfo=eastern_tz)
+        # Day starts at 3 AM Eastern and ends at 2:59:59 AM Eastern the next day
+        start_of_day_eastern = datetime.combine(today, datetime.min.time().replace(hour=3)).replace(tzinfo=eastern_tz)
+        end_of_day_eastern = datetime.combine(today + timedelta(days=1), datetime.min.time().replace(hour=3)).replace(tzinfo=eastern_tz)
         
         # Convert to UTC for database comparison
         start_of_day_utc = start_of_day_eastern.astimezone(timezone.utc)
