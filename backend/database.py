@@ -5,7 +5,8 @@ from dotenv import load_dotenv
 import os
 
 load_dotenv()
-SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./can_drive.db")
+# Force SQLite - ignore any PostgreSQL DATABASE_URL that might be set
+SQLALCHEMY_DATABASE_URL = "sqlite:///./can_drive.db"
 
 # Simple SQLite configuration - no connection pooling needed
 engine = create_engine(
