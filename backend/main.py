@@ -798,10 +798,14 @@ def reserve_street_direct(payload: dict):
         
         # Check if any of these streets are already reserved
         for street in streets_to_check:
+            # Extract just the street name (before the first comma) for comparison
+            street_name_only = street.split(',')[0].strip() if ',' in street else street
+            
             # Check for exact street name match in existing reservations
+            # Look for reservations that contain this street name
             existing = db.query(MapReservation).filter(
                 MapReservation.event_id == 1,
-                MapReservation.street_name.ilike(f'%{street}%')
+                MapReservation.street_name.ilike(f'%{street_name_only}%')
             ).first()
             
             if existing:
@@ -812,9 +816,9 @@ def reserve_street_direct(payload: dict):
                 if existing_name.lower() != current_name.lower():
                     # Different person trying to reserve - block it
                     if existing.student_id:
-                        return {"error": f"Street '{street}' is already reserved by student: {existing_name}"}
+                        return {"error": f"Street '{street_name_only}' is already reserved by student: {existing_name}"}
                     else:
-                        return {"error": f"Street '{street}' is already reserved by: {existing_name}"}
+                        return {"error": f"Street '{street_name_only}' is already reserved by: {existing_name}"}
         
         # Create new reservation
         reservation = MapReservation(
