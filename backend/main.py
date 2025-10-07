@@ -23,7 +23,7 @@ def get_db_with_retry(max_retries=3, delay=1):
     """Get database connection with retry logic for connection pool issues"""
     for attempt in range(max_retries):
         try:
-            db = next(get_db())
+            db = get_db_with_retry()
             return db
         except (TimeoutError, OperationalError) as e:
             if attempt == max_retries - 1:
@@ -41,7 +41,7 @@ def ensure_admin_user():
     from datetime import datetime
     import hashlib
     try:
-        db = next(get_db())
+        db = get_db_with_retry()
         existing_admin = db.query(Admin).filter(Admin.username == 'ACS_CanDrive').first()
         if not existing_admin:
             admin = Admin(
@@ -65,7 +65,7 @@ def ensure_event():
     from models import Event
     from datetime import datetime
     try:
-        db = next(get_db())
+        db = get_db_with_retry()
         existing_event = db.query(Event).filter(Event.id == 1).first()
         if not existing_event:
             event = Event(
@@ -208,7 +208,7 @@ def debug_admin():
     from database import get_db
     from models import Admin
     try:
-        db = next(get_db())
+        db = get_db_with_retry()
         admin = db.query(Admin).filter(Admin.username == 'ACS_CanDrive').first()
         if admin:
             return {
@@ -227,7 +227,7 @@ def test_students(grade: str = None, homeroom: str = None, name: str = None, tea
     from database import get_db
     from models import Student
     try:
-        db = next(get_db())
+        db = get_db_with_retry()
         students = db.query(Student).filter(Student.event_id == 1).all()
         return {
             "count": len(students),
@@ -257,7 +257,7 @@ def debug_students():
     from database import get_db
     from models import Student
     try:
-        db = next(get_db())
+        db = get_db_with_retry()
         students = db.query(Student).filter(Student.event_id == 1).all()
         return {
             "count": len(students),
@@ -280,7 +280,7 @@ def search_students_direct(q: str):
     from database import get_db
     from models import Student
     try:
-        db = next(get_db())
+        db = get_db_with_retry()
         query = db.query(Student).filter(Student.event_id == 1)
         
         # Search by name (first_name + last_name)
@@ -309,7 +309,7 @@ def verify_student_direct(payload: dict):
     from database import get_db
     from models import Student
     try:
-        db = next(get_db())
+        db = get_db_with_retry()
         
         # Accept flexible payload shapes from frontend
         name = (payload.get('name') or '').strip()
@@ -373,7 +373,7 @@ def debug_students():
     from database import get_db
     from models import Student
     try:
-        db = next(get_db())
+        db = get_db_with_retry()
         students = db.query(Student).all()
         print(f"DEBUG: Found {len(students)} total students")
         for s in students[:5]:  # Print first 5 students
@@ -397,7 +397,7 @@ def debug_database():
     from models import Student, Event
     try:
         print("DEBUG: Testing database connection...")
-        db = next(get_db())
+        db = get_db_with_retry()
         
         # Test basic query
         student_count = db.query(Student).count()
@@ -438,7 +438,7 @@ def debug_leaderboard():
     from collections import defaultdict
     try:
         print("DEBUG: Starting debug leaderboard...")
-        db = next(get_db())
+        db = get_db_with_retry()
         students = db.query(Student).all()
         print(f"DEBUG: Found {len(students)} students")
         
@@ -633,7 +633,7 @@ def export_leaderboard_csv():
     
     try:
         # Get database connection
-        db = next(get_db())
+        db = get_db_with_retry()
         
         # Get all students and teachers for event 1
         students = db.query(Student).filter(Student.event_id == 1).all()
@@ -745,7 +745,7 @@ def list_donations_direct():
     from database import get_db
     from models import Donation
     try:
-        db = next(get_db())
+        db = get_db_with_retry()
         donations = db.query(Donation).filter(Donation.event_id == 1).all()
         return donations
     except Exception as e:
@@ -756,7 +756,7 @@ def add_donation_direct(payload: dict):
     from database import get_db
     from models import Donation, Student, Teacher
     try:
-        db = next(get_db())
+        db = get_db_with_retry()
         
         # Create donation with Eastern timezone converted to UTC for storage
         from datetime import datetime, timezone, timedelta
@@ -811,7 +811,7 @@ def list_map_reservations_direct():
     from database import get_db
     from models import MapReservation
     try:
-        db = next(get_db())
+        db = get_db_with_retry()
         reservations = db.query(MapReservation).filter(MapReservation.event_id == 1).all()
         return [
             {
@@ -863,7 +863,7 @@ def export_map_reservations_csv():
     import io
     
     try:
-        db = next(get_db())
+        db = get_db_with_retry()
         reservations = db.query(MapReservation).filter(MapReservation.event_id == 1).all()
         
         # Create CSV content
@@ -907,7 +907,7 @@ def reserve_street_direct(payload: dict):
     from database import get_db
     from models import MapReservation
     try:
-        db = next(get_db())
+        db = get_db_with_retry()
         
         # Check if street is already reserved
         existing = db.query(MapReservation).filter(
@@ -955,7 +955,7 @@ def get_students_direct(grade: str = None, homeroom: str = None, name: str = Non
     from models import Student
     from sqlalchemy import String
     try:
-        db = next(get_db())
+        db = get_db_with_retry()
         query = db.query(Student).filter(Student.event_id == 1)
         
         # Apply filters
@@ -1040,7 +1040,7 @@ def get_teachers_direct():
     from database import get_db
     from models import Teacher
     try:
-        db = next(get_db())
+        db = get_db_with_retry()
         teachers = db.query(Teacher).filter(Teacher.event_id == 1).all()
         return [
             {
@@ -1063,7 +1063,7 @@ def create_admin():
     from datetime import datetime
     import hashlib
     try:
-        db = next(get_db())
+        db = get_db_with_retry()
         
         # Check if admin already exists
         existing_admin = db.query(Admin).filter(Admin.username == 'ACS_CanDrive').first()
@@ -1436,7 +1436,7 @@ def reset_event_direct(confirm: bool = False):
         if not confirm:
             return {"error": "Reset requires confirmation. Add ?confirm=true to the request."}
             
-        db = next(get_db())
+        db = get_db_with_retry()
         
         # Count existing data before deletion
         student_count = db.query(Student).filter(Student.event_id == 1).count()
