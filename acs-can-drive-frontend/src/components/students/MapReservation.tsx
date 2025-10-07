@@ -148,6 +148,19 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
   const handleReserve = () => {
     if (!selectedPlace) return;
 
+    // Check if this street is already reserved by someone else
+    const isAlreadyReserved = reservations.some(r => 
+      r.street_name.includes(selectedPlace.name) && 
+      (r.studentName !== studentName && r.name !== studentName)
+    );
+
+    if (isAlreadyReserved) {
+      toast.error(`${selectedPlace.name} is already reserved by someone else!`);
+      setShowInfo(false);
+      setSelectedPlace(null);
+      return;
+    }
+
     // Add to temporary streets instead of immediately reserving
     setTempStreets(prev => [...prev, selectedPlace]);
     setMyReservations(prev => [...prev, selectedPlace.name]);
@@ -352,6 +365,33 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
 
   return (
     <Box>
+      {/* Clear Instructions */}
+      <Paper elevation={1} sx={{ p: 3, mb: 3, bgcolor: 'info.light', borderRadius: 2 }}>
+        <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, color: 'info.dark' }}>
+          📍 Street Reservation Instructions
+        </Typography>
+        <Box component="ul" sx={{ pl: 2, m: 0 }}>
+          <Typography component="li" variant="body2" sx={{ mb: 1, fontWeight: 600 }}>
+            <strong>Search for streets</strong> using the search box below
+          </Typography>
+          <Typography component="li" variant="body2" sx={{ mb: 1, fontWeight: 600 }}>
+            <strong>Pick ALL your streets in ONE reservation</strong> - don't make multiple separate reservations
+          </Typography>
+          <Typography component="li" variant="body2" sx={{ mb: 1, fontWeight: 600 }}>
+            <strong>If you already have a reservation</strong>, you can edit it by adding or removing streets
+          </Typography>
+          <Typography component="li" variant="body2" sx={{ mb: 1, fontWeight: 600 }}>
+            <strong>Red pins on the map</strong> show streets already reserved by other students
+          </Typography>
+          <Typography component="li" variant="body2" sx={{ mb: 1, fontWeight: 600 }}>
+            <strong>For group members:</strong> Only add your friends' names, NOT your own name
+          </Typography>
+          <Typography component="li" variant="body2" sx={{ fontWeight: 600 }}>
+            <strong>Click "Complete Registration"</strong> when you're done selecting all your streets
+          </Typography>
+        </Box>
+      </Paper>
+
       {/* Search */}
       <Autocomplete
         onLoad={(autocomplete) => (autocompleteRef.current = autocomplete)}
