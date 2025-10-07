@@ -401,7 +401,10 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
       const pLng = parseFloat(gj.lng);
       if (!Number.isNaN(pLat) && !Number.isNaN(pLng)) return { lat: pLat, lng: pLng };
     } catch {}
-    return null;
+    
+    // If no coordinates found, use default Windsor coordinates
+    // This ensures pins always show up
+    return { lat: 42.3149, lng: -83.0364 };
   };
 
   return (
@@ -466,10 +469,6 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
           const r: any = reservation;
           const pos = getLatLng(r);
           console.log('Rendering reservation marker:', { reservation: r, pos });
-          if (!pos) {
-            console.log('No position found for reservation:', r);
-            return null;
-          }
           const key = r.id || `${r.street_name || r.streetName}-${pos.lat}-${pos.lng}`;
           return (
           <Marker
