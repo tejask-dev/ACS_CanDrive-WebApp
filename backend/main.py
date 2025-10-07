@@ -59,6 +59,31 @@ def ensure_admin_user():
 
 ensure_admin_user()
 
+# Ensure event 1 exists on startup
+def ensure_event():
+    from database import get_db
+    from models import Event
+    from datetime import datetime
+    try:
+        db = next(get_db())
+        existing_event = db.query(Event).filter(Event.id == 1).first()
+        if not existing_event:
+            event = Event(
+                id=1,
+                name='ACS Can Drive 2025',
+                start_date=datetime.now(),
+                created_at=datetime.now()
+            )
+            db.add(event)
+            db.commit()
+            print('✅ Event 1 created successfully')
+        else:
+            print('✅ Event 1 already exists')
+    except Exception as e:
+        print(f'❌ Error ensuring event: {e}')
+
+ensure_event()
+
 app.include_router(admin.router, prefix="/api/auth", tags=["auth"])
 # app.include_router(events.router, prefix="/api/events", tags=["events"])  # Temporarily disabled due to route conflict with direct leaderboard endpoint
 # app.include_router(students.router, prefix="/api/events/{event_id}/students", tags=["students"])  # Temporarily disabled due to route conflict
