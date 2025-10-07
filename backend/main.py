@@ -1059,12 +1059,11 @@ def create_admin():
 
 @app.post("/api/events/1/upload-roster")
 async def upload_roster_direct(file: UploadFile = File(...)):
-    from database import get_db
     from models import Student
     import openpyxl
     from io import BytesIO
     try:
-        db = next(get_db())
+        db = get_db_with_retry()
         content = await file.read()
         wb = openpyxl.load_workbook(BytesIO(content), data_only=True)
         sheet = wb.active
@@ -1153,19 +1152,20 @@ async def upload_roster_direct(file: UploadFile = File(...)):
             db.add(student)
             added += 1
         db.commit()
-        return {"added": added}
+        print(f"Student upload completed: Added {added} students from {file.filename}")
+        return {"message": f"Added {added} students from {file.filename}", "added": added}
     except Exception as e:
+        print(f"Student upload error: {e}")
         return {"error": str(e)}
 
 @app.post("/api/events/1/upload-teachers")
 async def upload_teachers_direct(file: UploadFile = File(...)):
     """Upload teachers Excel file"""
-    from database import get_db
     from models import Teacher, Student
     import openpyxl
     from io import BytesIO
     try:
-        db = next(get_db())
+        db = get_db_with_retry()
         content = await file.read()
         wb = openpyxl.load_workbook(BytesIO(content), data_only=True)
         sheet = wb.active
@@ -1243,8 +1243,10 @@ async def upload_teachers_direct(file: UploadFile = File(...)):
             added += 1
         
         db.commit()
+        print(f"Teacher upload completed: Added {added} teachers from {file.filename}")
         return {"added": added, "message": f"Added {added} new teachers"}
     except Exception as e:
+        print(f"Teacher upload error: {e}")
         return {"error": str(e)}
 
 @app.get("/api/events/1/daily-donors")
