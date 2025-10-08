@@ -1392,17 +1392,27 @@ async def import_map_reservations_csv(file: UploadFile = File(...)):
     import json
     
     try:
+        print(f"Starting import of file: {file.filename}")
         db = get_db_simple()
+        print("Database connection established")
         
         # Read CSV content
         content = await file.read()
         csv_content = content.decode('utf-8')
+        print(f"CSV content length: {len(csv_content)}")
+        
         csv_reader = csv.DictReader(io.StringIO(csv_content))
+        print(f"CSV headers: {csv_reader.fieldnames}")
         
         added = 0
-        for row in csv_reader:
+        skipped = 0
+        for row_num, row in enumerate(csv_reader, 1):
+            print(f"Processing row {row_num}: {row}")
+            
             # Skip if required fields are missing
             if not row.get('Student Name') or not row.get('Street Name'):
+                print(f"Skipping row {row_num}: Missing required fields")
+                skipped += 1
                 continue
                 
             # Check if reservation already exists
@@ -1413,7 +1423,9 @@ async def import_map_reservations_csv(file: UploadFile = File(...)):
             ).first()
             
             if existing:
-                continue  # Skip duplicates
+                print(f"Skipping row {row_num}: Duplicate reservation")
+                skipped += 1
+                continue
             
             # Create geojson with coordinates if available
             geojson_data = {}
@@ -1426,7 +1438,9 @@ async def import_map_reservations_csv(file: UploadFile = File(...)):
                         "lng": lng,
                         "group": row.get('Group Members', '')
                     }
-                except (ValueError, TypeError):
+                    print(f"Row {row_num}: Created geojson with coordinates {lat}, {lng}")
+                except (ValueError, TypeError) as e:
+                    print(f"Row {row_num}: Error parsing coordinates: {e}")
                     geojson_data = {}
             
             # Create new reservation
@@ -1441,11 +1455,16 @@ async def import_map_reservations_csv(file: UploadFile = File(...)):
             
             db.add(reservation)
             added += 1
+            print(f"Row {row_num}: Added reservation for {row['Student Name']}")
         
         db.commit()
-        return {"message": f"Successfully imported {added} reservations", "added": added}
+        print(f"Import completed: {added} added, {skipped} skipped")
+        return {"message": f"Successfully imported {added} reservations", "added": added, "skipped": skipped}
         
     except Exception as e:
+        print(f"Import error: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return {"error": str(e)}
 
 @app.get("/api/events/1/leaderboard/csv")
