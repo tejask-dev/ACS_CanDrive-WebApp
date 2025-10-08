@@ -599,14 +599,15 @@ def get_leaderboard():
         grade_groups = defaultdict(int)
         for student in students:
             grade = str(student.grade or '').strip()
-            grade_groups[grade] += student.total_cans or 0
+            if grade:  # Only count non-empty grades
+                grade_groups[grade] += student.total_cans or 0
         
         grades_sorted = sorted(grade_groups.items(), key=lambda x: x[1], reverse=True)
         top_grades = []
         for i, (grade, cans) in enumerate(grades_sorted[:50]):
             top_grades.append({
                 "rank": i + 1,
-                "grade": grade,
+                "grade": int(grade) if grade.isdigit() else grade,
                 "totalCans": cans
             })
         
@@ -1482,7 +1483,7 @@ async def import_map_reservations_csv(file: UploadFile = File(...)):
 @app.get("/api/events/1/leaderboard/csv")
 def export_leaderboard_csv():
     """Export leaderboard data as CSV"""
-    from models import Student, Teacher, Donation
+    from models import Student, Teacher
     import csv
     import io
     
@@ -1502,11 +1503,12 @@ def export_leaderboard_csv():
         # Write student data
         student_rankings = []
         for student in students:
-            student_rankings.append({
-                'name': f"{student.first_name} {student.last_name}".strip(),
-                'grade': student.grade,
-                'total_cans': student.total_cans or 0
-            })
+            if student.total_cans and student.total_cans > 0:  # Only include students with cans
+                student_rankings.append({
+                    'name': f"{student.first_name} {student.last_name}".strip(),
+                    'grade': student.grade,
+                    'total_cans': student.total_cans or 0
+                })
         
         student_rankings.sort(key=lambda x: x['total_cans'], reverse=True)
         for i, student in enumerate(student_rankings):
@@ -1521,11 +1523,12 @@ def export_leaderboard_csv():
         # Write teacher data
         teacher_rankings = []
         for teacher in teachers:
-            teacher_rankings.append({
-                'name': teacher.full_name or f"{teacher.first_name} {teacher.last_name}".strip(),
-                'homeroom': teacher.homeroom_number,
-                'total_cans': teacher.total_cans or 0
-            })
+            if teacher.total_cans and teacher.total_cans > 0:  # Only include teachers with cans
+                teacher_rankings.append({
+                    'name': teacher.full_name or f"{teacher.first_name} {teacher.last_name}".strip(),
+                    'homeroom': teacher.homeroom_number,
+                    'total_cans': teacher.total_cans or 0
+                })
         
         teacher_rankings.sort(key=lambda x: x['total_cans'], reverse=True)
         for i, teacher in enumerate(teacher_rankings):
@@ -1546,4 +1549,5 @@ def export_leaderboard_csv():
         )
         
     except Exception as e:
+        print(f"CSV export error: {e}")
         return {"error": str(e)}
