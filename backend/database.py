@@ -10,7 +10,12 @@ load_dotenv()
 # Override any environment variables that might point to PostgreSQL
 import os
 os.environ.pop('DATABASE_URL', None)  # Remove any PostgreSQL URL
-SQLALCHEMY_DATABASE_URL = "sqlite:///./can_drive.db"
+
+# Use persistent disk if available, otherwise use local path
+if os.path.exists('/mnt/disk'):
+    SQLALCHEMY_DATABASE_URL = "sqlite:////mnt/disk/can_drive.db"
+else:
+    SQLALCHEMY_DATABASE_URL = "sqlite:///./can_drive.db"
 
 # Simple SQLite configuration - no connection pooling needed
 engine = create_engine(
