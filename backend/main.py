@@ -1242,6 +1242,14 @@ def get_daily_donors():
             elif donation.teacher_id:
                 teacher_daily[donation.teacher_id] += donation.amount or 0
         
+        # Also include students with manual updates (total_cans > 0) if they don't have donations today
+        # This ensures manual updates show up in daily donors
+        all_students = db.query(Student).filter(Student.event_id == 1).all()
+        for student in all_students:
+            if student.id not in student_daily and (student.total_cans or 0) > 0:
+                # If student has total_cans but no donations today, include them with their total
+                student_daily[student.id] = student.total_cans or 0
+        
         # Calculate grade totals for today - get all students with donations
         if student_daily:
             students_with_donations = db.query(Student).filter(
