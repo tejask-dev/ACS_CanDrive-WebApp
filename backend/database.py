@@ -17,10 +17,16 @@ if os.path.exists('/mnt/disk'):
 else:
     SQLALCHEMY_DATABASE_URL = "sqlite:///./can_drive.db"
 
-# Simple SQLite configuration - no connection pooling needed
+# Simple SQLite configuration - explicitly disable connection pooling
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL, 
-    connect_args={"check_same_thread": False}
+    connect_args={"check_same_thread": False},
+    poolclass=None,  # Disable connection pooling entirely
+    pool_pre_ping=False,
+    pool_recycle=None,
+    pool_size=None,
+    max_overflow=None,
+    pool_timeout=None
 )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
