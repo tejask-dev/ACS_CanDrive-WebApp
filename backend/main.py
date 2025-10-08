@@ -484,16 +484,13 @@ def test_leaderboard():
 @app.get("/api/events/1/leaderboard")
 def get_leaderboard():
     """Get leaderboard data for event 1"""
-    from models import Student, Teacher
+    from models import Student, Teacher, Donation
     from collections import defaultdict
     from sqlalchemy import text
     
     try:
         # Get database connection with retry
         db = get_db_simple()
-        
-        # Test connection first
-        db.execute(text("SELECT 1"))
         
         # Get all students and teachers for event 1
         students = db.query(Student).filter(Student.event_id == 1).all()
@@ -507,6 +504,28 @@ def get_leaderboard():
                 "topTeachers": [],
                 "totalCans": 0
             }
+        
+        # Recalculate totals from actual donations to prevent double counting
+        # Reset all totals first
+        for student in students:
+            student.total_cans = 0
+        for teacher in teachers:
+            teacher.total_cans = 0
+        
+        # Get all donations and recalculate totals
+        donations = db.query(Donation).filter(Donation.event_id == 1).all()
+        for donation in donations:
+            if donation.student_id:
+                student = db.query(Student).filter(Student.id == donation.student_id).first()
+                if student:
+                    student.total_cans = (student.total_cans or 0) + donation.amount
+            elif donation.teacher_id:
+                teacher = db.query(Teacher).filter(Teacher.id == donation.teacher_id).first()
+                if teacher:
+                    teacher.total_cans = (teacher.total_cans or 0) + donation.amount
+        
+        # Commit the recalculated totals
+        db.commit()
         
         # Calculate total cans from students and teachers
         student_cans = sum(student.total_cans or 0 for student in students)
@@ -816,6 +835,9 @@ def reserve_street_direct(payload: dict):
                         return {"error": f"Street '{street_name_only}' is already reserved by student: {existing_name}"}
                     else:
                         return {"error": f"Street '{street_name_only}' is already reserved by: {existing_name}"}
+                else:
+                    # Same person - delete existing reservation to allow update
+                    db.delete(existing)
         
         # Create new reservation
         reservation = MapReservation(
@@ -1212,19 +1234,6 @@ def get_daily_donors():
             Donation.donation_date < end_of_day_utc
         ).all()
         
-        # Debug logging
-        print(f"Daily donors debug:")
-        print(f"Today (Eastern): {today}")
-        print(f"Start of day (UTC): {start_of_day_utc}")
-        print(f"End of day (UTC): {end_of_day_utc}")
-        print(f"Found {len(today_donations)} donations for today")
-        
-        # Debug specific donations
-        for donation in today_donations:
-            if donation.student_id:
-                student = db.query(Student).filter(Student.id == donation.student_id).first()
-                if student and "isabella" in student.first_name.lower() and "wang" in student.last_name.lower():
-                    print(f"DEBUG: Isabella Wang donation - Amount: {donation.amount}, Date: {donation.donation_date}, Student ID: {donation.student_id}")
         
         # Group donations by student/teacher/grade and sum amounts
         student_daily = defaultdict(int)
@@ -1380,6 +1389,7 @@ async def import_map_reservations_csv(file: UploadFile = File(...)):
     from models import MapReservation
     import csv
     import io
+    import json
     
     try:
         db = get_db_simple()
@@ -1405,13 +1415,27 @@ async def import_map_reservations_csv(file: UploadFile = File(...)):
             if existing:
                 continue  # Skip duplicates
             
+            # Create geojson with coordinates if available
+            geojson_data = {}
+            if row.get('Latitude') and row.get('Longitude'):
+                try:
+                    lat = float(row['Latitude'])
+                    lng = float(row['Longitude'])
+                    geojson_data = {
+                        "lat": lat,
+                        "lng": lng,
+                        "group": row.get('Group Members', '')
+                    }
+                except (ValueError, TypeError):
+                    geojson_data = {}
+            
             # Create new reservation
             reservation = MapReservation(
                 event_id=1,
                 name=row['Student Name'],
                 street_name=row['Street Name'],
                 group_members=row.get('Group Members', ''),
-                geojson='',  # Will be empty for imported data
+                geojson=json.dumps(geojson_data) if geojson_data else '',
                 student_id=None  # Will be None for imported data
             )
             
