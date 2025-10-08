@@ -8,5 +8,3 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: 3.9.18
-      - key: DATABASE_URL
-        value: sqlite:///./can_drive.db
