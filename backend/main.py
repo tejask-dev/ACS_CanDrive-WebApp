@@ -92,11 +92,8 @@ def favicon():
 @app.get("/health")
 def health_check():
     """Health check endpoint to monitor database connectivity"""
-    from sqlalchemy import text
     try:
-        db = get_db_with_retry(max_retries=1, delay=0.5)
-        # Simple query to test connection
-        db.execute(text("SELECT 1"))
+        db = get_db_simple()
         
         # Test basic table access
         from models import Student, Teacher, Donation, MapReservation
@@ -801,8 +798,6 @@ def reserve_street_direct(payload: dict):
             # Extract just the street name (before the first comma) for comparison
             street_name_only = street.split(',')[0].strip() if ',' in street else street
             
-            print(f"Checking street: '{street}' -> street_name_only: '{street_name_only}'")
-            
             # Check for exact street name match in existing reservations
             # Look for reservations that contain this exact street name at the beginning
             existing = db.query(MapReservation).filter(
@@ -811,12 +806,9 @@ def reserve_street_direct(payload: dict):
             ).first()
             
             if existing:
-                print(f"Found existing reservation: '{existing.street_name}' by '{existing.name}'")
                 # Check if it's the same person trying to reserve (allow editing)
                 existing_name = existing.name or existing.student_name or ''
                 current_name = payload.get('name') or payload.get('student_name', '')
-                
-                print(f"Comparing: existing='{existing_name}' vs current='{current_name}'")
                 
                 if existing_name.lower() != current_name.lower():
                     # Different person trying to reserve - block it

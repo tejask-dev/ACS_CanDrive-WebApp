@@ -30,3 +30,4 @@ all_students = db.query(Student).all()
 print(f"\nTotal students: {len(all_students)}")
 for s in all_students[:5]:  # Show first 5
     print(f"  - {s.first_name} {s.last_name}: Event {s.event_id}, Cans: {s.total_cans}")
+o 

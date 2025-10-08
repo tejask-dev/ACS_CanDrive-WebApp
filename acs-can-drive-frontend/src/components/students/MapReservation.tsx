@@ -215,18 +215,12 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
       return;
     }
 
-    console.log('Completing registration with streets:', tempStreets);
-    console.log('Group collection enabled:', showGroupCollection);
-    console.log('Group students:', groupStudents);
-
     setIsCompleting(true);
     try {
       // Check if this is an edit of existing reservation
       const existingReservation = reservations.find((res: any) => 
         res.studentName === studentName || res.name === studentName
       );
-
-      console.log('Existing reservation found:', existingReservation);
 
       if (existingReservation) {
         // Update existing reservation
@@ -248,8 +242,6 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
         if (!isTeacher) {
           payload.student_id = Number(studentId);
         }
-        
-        console.log('Update payload:', payload);
         
         // Delete old reservation and create new one
         await api.delete(`${API_ENDPOINTS.EVENTS.MAP_RESERVATIONS(eventId)}/${existingReservation.id}`);
@@ -281,8 +273,6 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
         if (!isTeacher) {
           payload.student_id = Number(studentId);
         }
-        
-        console.log('Create payload:', payload);
         
         const response = await api.post(API_ENDPOINTS.EVENTS.MAP_RESERVATIONS(eventId), payload);
 
@@ -408,14 +398,11 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
     
     try {
       const gj = r?.geojson ? JSON.parse(r.geojson) : {};
-      console.log('Parsing geojson for reservation:', r.id, 'geojson:', gj);
-      
       // Handle array of coordinates (multiple streets)
       if (Array.isArray(gj) && gj.length > 0) {
         const firstStreet = gj[0];
         const pLat = parseFloat(firstStreet.lat);
         const pLng = parseFloat(firstStreet.lng);
-        console.log('Found array coordinates:', { pLat, pLng });
         if (!Number.isNaN(pLat) && !Number.isNaN(pLng)) return { lat: pLat, lng: pLng };
       }
       
@@ -423,14 +410,11 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
       if (gj.lat && gj.lng) {
         const pLat = parseFloat(gj.lat);
         const pLng = parseFloat(gj.lng);
-        console.log('Found single coordinates:', { pLat, pLng });
         if (!Number.isNaN(pLat) && !Number.isNaN(pLng)) return { lat: pLat, lng: pLng };
       }
     } catch (error) {
       console.error('Error parsing geojson:', error, r?.geojson);
     }
-    
-    console.log('No valid coordinates found for reservation:', r.id);
     // Don't use default coordinates - return null if no coordinates found
     // This prevents all streets from appearing at the same location
     return null;

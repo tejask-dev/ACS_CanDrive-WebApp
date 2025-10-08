@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 import os
 
 load_dotenv()
+
 # Force SQLite - ignore any PostgreSQL DATABASE_URL that might be set
 SQLALCHEMY_DATABASE_URL = "sqlite:///./can_drive.db"
 
