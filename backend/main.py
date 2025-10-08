@@ -505,26 +505,22 @@ def get_leaderboard():
                 "totalCans": 0
             }
         
-        # Recalculate totals from actual donations to prevent double counting
-        # Reset all totals first
-        for student in students:
-            student.total_cans = 0
-        for teacher in teachers:
-            teacher.total_cans = 0
-        
-        # Get all donations and recalculate totals
+        # Use existing total_cans values (respects manual updates)
+        # Only recalculate if total_cans is 0 or None (new students)
         donations = db.query(Donation).filter(Donation.event_id == 1).all()
         for donation in donations:
             if donation.student_id:
                 student = db.query(Student).filter(Student.id == donation.student_id).first()
-                if student:
-                    student.total_cans = (student.total_cans or 0) + donation.amount
+                if student and (student.total_cans is None or student.total_cans == 0):
+                    # Only update if no manual total has been set
+                    student.total_cans = donation.amount
             elif donation.teacher_id:
                 teacher = db.query(Teacher).filter(Teacher.id == donation.teacher_id).first()
-                if teacher:
-                    teacher.total_cans = (teacher.total_cans or 0) + donation.amount
+                if teacher and (teacher.total_cans is None or teacher.total_cans == 0):
+                    # Only update if no manual total has been set
+                    teacher.total_cans = donation.amount
         
-        # Commit the recalculated totals
+        # Commit any updates
         db.commit()
         
         # Calculate total cans from students and teachers
