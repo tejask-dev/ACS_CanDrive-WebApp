@@ -7,6 +7,9 @@ import os
 load_dotenv()
 
 # Force SQLite - ignore any PostgreSQL DATABASE_URL that might be set
+# Override any environment variables that might point to PostgreSQL
+import os
+os.environ.pop('DATABASE_URL', None)  # Remove any PostgreSQL URL
 SQLALCHEMY_DATABASE_URL = "sqlite:///./can_drive.db"
 
 # Simple SQLite configuration - no connection pooling needed
