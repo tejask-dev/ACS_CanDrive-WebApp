@@ -19,8 +19,8 @@ init_db()
 # Simple database helper for SQLite
 def get_db_simple():
     """Get database connection - simple for SQLite"""
-    from database import get_db
-    return next(get_db())
+    from database import SessionLocal
+    return SessionLocal()
 
 # Ensure admin user exists on startup
 def ensure_admin_user():

@@ -14,8 +14,8 @@ router = APIRouter()
 # Simple database helper for admin operations
 def get_db_simple():
     """Get database connection - simple for SQLite"""
-    from database import get_db
-    return next(get_db())
+    from database import SessionLocal
+    return SessionLocal()
 
 def create_access_token(data: dict, expires_delta: timedelta = timedelta(hours=8)):
     to_encode = data.copy()
