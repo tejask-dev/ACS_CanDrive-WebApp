@@ -22,6 +22,16 @@ def get_db_simple():
     from database import SessionLocal
     return SessionLocal()
 
+# Database context manager to ensure connections are closed
+def get_db_with_context():
+    """Get database connection with automatic cleanup"""
+    from database import SessionLocal
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
 # Ensure admin user exists on startup
 def ensure_admin_user():
     from database import SessionLocal
@@ -614,6 +624,12 @@ def get_leaderboard():
             "totalCans": 0,
             "error": str(e)
         }
+    finally:
+        # Ensure database connection is closed
+        try:
+            db.close()
+        except:
+            pass
 
 
 @app.get("/api/events/1/donations")
@@ -1327,6 +1343,12 @@ def get_daily_donors():
             "topGrades": [],
             "error": str(e)
         }
+    finally:
+        # Ensure database connection is closed
+        try:
+            db.close()
+        except:
+            pass
 
 @app.delete("/api/events/1/reset")
 def reset_event_direct(confirm: bool = False):
