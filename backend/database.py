@@ -20,13 +20,7 @@ else:
 # Simple SQLite configuration - no connection pooling needed
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL, 
-    connect_args={"check_same_thread": False},
-    poolclass=None,  # Explicitly disable connection pooling
-    pool_timeout=None,  # No timeout
-    pool_recycle=None,  # No recycling
-    pool_pre_ping=False,  # No pre-ping
-    pool_size=None,  # No pool size
-    max_overflow=None  # No overflow
+    connect_args={"check_same_thread": False}
 )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
