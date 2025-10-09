@@ -1217,34 +1217,19 @@ def get_daily_donors():
         ).all()
         
         
-        # Group donations by student/teacher/grade and sum amounts
-        # Get all students and teachers for today's leaderboard
-        # Use their current total_cans values (respects manual updates)
-        all_students = db.query(Student).filter(Student.event_id == 1).all()
-        all_teachers = db.query(Teacher).filter(Teacher.event_id == 1).all()
-        
+        # Calculate ONLY today's donations (not cumulative totals)
         student_daily = defaultdict(int)
         teacher_daily = defaultdict(int)
         grade_daily = defaultdict(int)
         
-        # Use current total_cans values instead of recalculating from donations
-        for student in all_students:
-            if student.total_cans and student.total_cans > 0:
-                student_daily[student.id] = student.total_cans
-                grade = str(student.grade or '').strip()
-                if grade:
-                    grade_daily[grade] += student.total_cans
+        # Sum up only today's donations by student/teacher
+        for donation in today_donations:
+            if donation.student_id:
+                student_daily[donation.student_id] += donation.amount or 0
+            elif donation.teacher_id:
+                teacher_daily[donation.teacher_id] += donation.amount or 0
         
-        for teacher in all_teachers:
-            if teacher.total_cans and teacher.total_cans > 0:
-                teacher_daily[teacher.id] = teacher.total_cans
-        
-        # For students with manual updates today, we need to track them differently
-        # Only include students who had donations OR manual updates TODAY
-        # We'll check if there are any students with recent manual updates (within today's timeframe)
-        # This is a simplified approach - in a real system, you'd want to track when manual updates occurred
-        
-        # Calculate grade totals for today - get all students with donations
+        # Calculate grade totals from today's donations only
         if student_daily:
             students_with_donations = db.query(Student).filter(
                 Student.id.in_(student_daily.keys()),
@@ -1256,6 +1241,7 @@ def get_daily_donors():
                 grade = str(student.grade or '').strip()
                 if grade:
                     grade_daily[grade] += daily_amount
+        
         
         # Get top 10 students for today
         top_students = []
