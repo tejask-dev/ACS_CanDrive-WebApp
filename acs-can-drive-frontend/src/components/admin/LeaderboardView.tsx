@@ -148,7 +148,7 @@ const LeaderboardView = () => {
     try {
       if (format === 'csv') {
         // Use backend CSV export endpoint
-        const response = await api.get('/api/events/1/leaderboard/csv', {
+        const response = await api.get('/events/1/leaderboard/csv', {
           responseType: 'blob'
         });
         
