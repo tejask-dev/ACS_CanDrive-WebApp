@@ -1475,7 +1475,7 @@ async def import_map_reservations_csv(file: UploadFile = File(...)):
 
 @app.get("/api/events/1/leaderboard/csv")
 def export_leaderboard_csv():
-    """Export leaderboard data as CSV"""
+    """Export leaderboard data as CSV - only students who donated cans"""
     from models import Student, Teacher
     import csv
     import io
@@ -1490,57 +1490,84 @@ def export_leaderboard_csv():
         output = io.StringIO()
         writer = csv.writer(output)
         
-        # Write header
-        writer.writerow(['Type', 'Name', 'Grade/Homeroom', 'Total Cans', 'Rank'])
+        # Write header with all requested fields
+        writer.writerow(['Name', 'Grade', 'Homeroom Number', 'Homeroom Teacher', 'Total Cans', 'Rank'])
         
-        # Write student data
+        # Write student data - ONLY students who have donated cans
         student_rankings = []
         for student in students:
             if student.total_cans and student.total_cans > 0:  # Only include students with cans
                 student_rankings.append({
                     'name': f"{student.first_name} {student.last_name}".strip(),
                     'grade': student.grade,
+                    'homeroom_number': student.homeroom_number,
+                    'homeroom_teacher': student.homeroom_teacher,
                     'total_cans': student.total_cans or 0
                 })
         
+        # Sort by total cans descending
         student_rankings.sort(key=lambda x: x['total_cans'], reverse=True)
+        
+        # Write student data to CSV
         for i, student in enumerate(student_rankings):
             writer.writerow([
-                'Student',
                 student['name'],
-                f"Grade {student['grade']}" if student['grade'] else '',
+                student['grade'] or '',
+                student['homeroom_number'] or '',
+                student['homeroom_teacher'] or '',
                 student['total_cans'],
                 i + 1
             ])
         
-        # Write teacher data
+        # Write teacher data - ONLY teachers who have donated cans
         teacher_rankings = []
         for teacher in teachers:
             if teacher.total_cans and teacher.total_cans > 0:  # Only include teachers with cans
                 teacher_rankings.append({
                     'name': teacher.full_name or f"{teacher.first_name} {teacher.last_name}".strip(),
-                    'homeroom': teacher.homeroom_number,
+                    'homeroom_number': teacher.homeroom_number,
                     'total_cans': teacher.total_cans or 0
                 })
         
+        # Sort by total cans descending
         teacher_rankings.sort(key=lambda x: x['total_cans'], reverse=True)
+        
+        # Write teacher data to CSV
         for i, teacher in enumerate(teacher_rankings):
             writer.writerow([
-                'Teacher',
                 teacher['name'],
-                f"Room {teacher['homeroom']}" if teacher['homeroom'] else '',
+                'Teacher',  # Grade field for teachers
+                teacher['homeroom_number'] or '',
+                '',  # No homeroom teacher for teachers themselves
                 teacher['total_cans'],
                 i + 1
             ])
         
-        output.seek(0)
+        # Get CSV content
+        csv_content = output.getvalue()
+        output.close()
+        
+        # Close database connection
+        db.close()
+        
         from fastapi.responses import Response
         return Response(
-            content=output.getvalue(),
+            content=csv_content,
             media_type="text/csv",
-            headers={"Content-Disposition": "attachment; filename=leaderboard.csv"}
+            headers={"Content-Disposition": "attachment; filename=leaderboard_export.csv"}
         )
         
     except Exception as e:
         print(f"CSV export error: {e}")
-        return {"error": str(e)}
+        from fastapi.responses import Response
+        return Response(
+            content=f"Error exporting CSV: {str(e)}",
+            media_type="text/plain",
+            status_code=500
+        )
+    finally:
+        # Ensure database connection is closed
+        try:
+            db.close()
+        except:
+            pass
