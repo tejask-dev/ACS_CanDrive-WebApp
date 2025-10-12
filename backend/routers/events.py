@@ -145,7 +145,16 @@ def leaderboard(event_id: int, db: Session = Depends(get_db)):
     # Top grades
     grade_totals = defaultdict(int)
     for s in students:
-        grade_totals[str(s.grade or '').strip()] += int(s.total_cans or 0)
+        grade = str(s.grade or '').strip()
+        if grade:  # Only count non-empty grades
+            # Normalize grade to prevent duplicates (e.g., "12", "12.0", "12 " all become "12")
+            try:
+                # Try to convert to int first, then back to string to normalize
+                normalized_grade = str(int(float(grade)))
+            except (ValueError, TypeError):
+                # If conversion fails, use the original string
+                normalized_grade = grade
+            grade_totals[normalized_grade] += int(s.total_cans or 0)
     sorted_grades = sorted(grade_totals.items(), key=lambda kv: kv[1], reverse=True)
     top_grades = [
         {

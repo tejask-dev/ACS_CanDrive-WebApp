@@ -595,7 +595,14 @@ def get_leaderboard():
         for student in students:
             grade = str(student.grade or '').strip()
             if grade:  # Only count non-empty grades
-                grade_groups[grade] += student.total_cans or 0
+                # Normalize grade to prevent duplicates (e.g., "12", "12.0", "12 " all become "12")
+                try:
+                    # Try to convert to int first, then back to string to normalize
+                    normalized_grade = str(int(float(grade)))
+                except (ValueError, TypeError):
+                    # If conversion fails, use the original string
+                    normalized_grade = grade
+                grade_groups[normalized_grade] += student.total_cans or 0
         
         grades_sorted = sorted(grade_groups.items(), key=lambda x: x[1], reverse=True)
         top_grades = []
@@ -876,7 +883,7 @@ def get_students_direct(grade: str = None, homeroom: str = None, name: str = Non
         
         # Apply filters
         if grade:
-            query = query.filter(Student.grade == float(grade))
+            query = query.filter(Student.grade == grade)
         if homeroom:
             query = query.filter(
                 (Student.homeroom_number.ilike(f"%{homeroom}%")) |

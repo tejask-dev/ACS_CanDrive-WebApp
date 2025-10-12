@@ -12,7 +12,7 @@ export interface Student {
   id: string;
   eventId: string;
   name: string;
-  grade: number;
+  grade: string | number; // Backend returns as string, but we handle both
   homeroomNumber: string;
   homeroomTeacher: string;
   totalCans: number;

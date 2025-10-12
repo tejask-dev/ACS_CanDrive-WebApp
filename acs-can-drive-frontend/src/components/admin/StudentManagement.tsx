@@ -151,9 +151,9 @@ const StudentManagement = () => {
               setSelectedStudent(params.row);
               setFormData({
                 name: params.row.name,
-                grade: params.row.grade.toString(),
-                homeroomNumber: params.row.homeroomNumber,
-                homeroomTeacher: params.row.homeroomTeacher,
+                grade: params.row.grade ? params.row.grade.toString() : '',
+                homeroomNumber: params.row.homeroomNumber || '',
+                homeroomTeacher: params.row.homeroomTeacher || '',
               });
               setOpen(true);
             }}
