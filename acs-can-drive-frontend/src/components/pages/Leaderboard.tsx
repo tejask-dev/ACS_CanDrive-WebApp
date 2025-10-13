@@ -22,11 +22,11 @@ import {
   CardContent,
   Button,
 } from '@mui/material';
-import { ArrowBack, EmojiEvents, School, Refresh, TrendingUp } from '@mui/icons-material';
+import { ArrowBack, EmojiEvents, School, Refresh, TrendingUp, CheckCircle } from '@mui/icons-material';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import api from '@/services/api';
 import { API_ENDPOINTS } from '@/config/api';
-import type { LeaderboardData, LeaderboardEntry } from '@/types';
+import type { LeaderboardData, LeaderboardEntry, ClassBuyoutEntry } from '@/types';
 
 const Leaderboard = () => {
   const navigate = useNavigate();
@@ -37,6 +37,7 @@ const Leaderboard = () => {
     topTeachers: [],
     topClasses: [],
     topGrades: [],
+    classBuyout: [],
     totalCans: 0,
   });
 
@@ -149,6 +150,101 @@ const Leaderboard = () => {
         </TableBody>
       </Table>
     </TableContainer>
+  );
+
+  const renderClassBuyoutTable = (entries: ClassBuyoutEntry[]) => (
+    <Box>
+      <Paper sx={{ p: 3, mb: 3, bgcolor: 'info.light', borderRadius: 2 }}>
+        <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, color: 'info.dark' }}>
+          🎯 Class Buyout Eligibility
+        </Typography>
+        <Typography variant="body2" sx={{ mb: 1 }}>
+          • Classes need to donate <strong>10 cans per student</strong> to be eligible
+        </Typography>
+        <Typography variant="body2" sx={{ mb: 1 }}>
+          • Only the <strong>first 20 classes</strong> to reach their target get the buyout
+        </Typography>
+        <Typography variant="body2">
+          • Classes with 0 students are excluded
+        </Typography>
+      </Paper>
+      
+      <TableContainer component={Paper} elevation={0} sx={{ borderRadius: 3 }}>
+        <Table>
+          <TableHead>
+            <TableRow sx={{ bgcolor: 'hsl(142, 76%, 36%)' }}>
+              <TableCell sx={{ color: 'white', fontWeight: 700 }}>Class</TableCell>
+              <TableCell sx={{ color: 'white', fontWeight: 700 }}>Students</TableCell>
+              <TableCell sx={{ color: 'white', fontWeight: 700 }}>Required</TableCell>
+              <TableCell sx={{ color: 'white', fontWeight: 700 }}>Actual</TableCell>
+              <TableCell sx={{ color: 'white', fontWeight: 700 }}>Progress</TableCell>
+              <TableCell sx={{ color: 'white', fontWeight: 700 }}>Status</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {entries.map((entry, index) => (
+              <TableRow key={index} sx={{ '&:nth-of-type(odd)': { bgcolor: 'hsl(214, 20%, 95%)' } }}>
+                <TableCell>
+                  <Box>
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                      {entry.homeroom_teacher}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Room {entry.homeroom_number}
+                    </Typography>
+                  </Box>
+                </TableCell>
+                <TableCell sx={{ fontWeight: 600 }}>
+                  {entry.student_count}
+                </TableCell>
+                <TableCell sx={{ fontWeight: 600 }}>
+                  {entry.required_cans}
+                </TableCell>
+                <TableCell sx={{ fontWeight: 600 }}>
+                  {entry.actual_cans}
+                </TableCell>
+                <TableCell sx={{ minWidth: 200 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Box sx={{ flexGrow: 1, height: 8, bgcolor: 'hsl(214, 20%, 88%)', borderRadius: 4, overflow: 'hidden' }}>
+                      <Box 
+                        sx={{ 
+                          height: '100%', 
+                          width: `${Math.min(100, entry.progress_percentage)}%`,
+                          bgcolor: entry.is_eligible ? 'hsl(142, 76%, 36%)' : 'hsl(45, 93%, 47%)',
+                          transition: 'width 0.3s ease'
+                        }} 
+                      />
+                    </Box>
+                    <Typography variant="caption" sx={{ minWidth: 40, textAlign: 'right' }}>
+                      {Math.round(entry.progress_percentage)}%
+                    </Typography>
+                  </Box>
+                </TableCell>
+                <TableCell>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <CheckCircle sx={{ color: entry.is_eligible ? 'hsl(142, 76%, 36%)' : 'hsl(0, 0%, 50%)', fontSize: 20 }} />
+                    <Typography variant="body2" sx={{ fontWeight: 600, color: entry.is_eligible ? 'hsl(142, 76%, 36%)' : 'hsl(0, 0%, 50%)' }}>
+                      {entry.is_eligible ? 'Eligible' : 'Not Eligible'}
+                    </Typography>
+                  </Box>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
+      
+      {entries.length === 0 && (
+        <Paper sx={{ p: 4, textAlign: 'center', mt: 2 }}>
+          <Typography variant="h6" color="text.secondary">
+            No eligible classes yet
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            Classes need to reach their target to appear here
+          </Typography>
+        </Paper>
+      )}
+    </Box>
   );
 
   const chartData = data.topStudents.slice(0, 10).map((entry) => ({
@@ -332,6 +428,7 @@ const Leaderboard = () => {
                 <Tab icon={<School />} label="Top Teachers" iconPosition="start" />
                 <Tab icon={<School />} label="Top Classes" iconPosition="start" />
                 <Tab icon={<TrendingUp />} label="Top Grades" iconPosition="start" />
+                <Tab icon={<CheckCircle />} label="Class Buyout" iconPosition="start" />
               </Tabs>
 
               <Box sx={{ p: 3 }}>
@@ -339,6 +436,7 @@ const Leaderboard = () => {
                 {tabValue === 1 && renderTable(data.topTeachers || [], false)}
                 {tabValue === 2 && renderTable(data.topClasses)}
                 {tabValue === 3 && renderTable(data.topGrades, false, true)}
+                {tabValue === 4 && renderClassBuyoutTable(data.classBuyout || [])}
               </Box>
             </Paper>
           </motion.div>

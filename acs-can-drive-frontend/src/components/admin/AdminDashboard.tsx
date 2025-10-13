@@ -36,6 +36,7 @@ import TeacherManagement from '@/components/admin/TeacherManagement';
 import DonationManagement from '@/components/admin/DonationManagement';
 import LeaderboardView from '@/components/admin/LeaderboardView';
 import MapView from '@/components/admin/MapView';
+import ClassBuyoutView from '@/components/admin/ClassBuyoutView';
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -60,6 +61,7 @@ const AdminDashboard = () => {
     { id: 'teachers', label: 'Teacher Management', icon: <People /> },
     { id: 'donations', label: 'Donations', icon: <Upload /> },
     { id: 'leaderboard', label: 'Leaderboard', icon: <EmojiEvents /> },
+    { id: 'class-buyout', label: 'Class Buyout', icon: <EmojiEvents /> },
     { id: 'map', label: 'Map Reservations', icon: <Map /> },
   ];
 
@@ -75,6 +77,8 @@ const AdminDashboard = () => {
         return <DonationManagement />;
       case 'leaderboard':
         return <LeaderboardView />;
+      case 'class-buyout':
+        return <ClassBuyoutView />;
       case 'map':
         return <MapView />;
       default:

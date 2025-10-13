@@ -49,11 +49,23 @@ export interface LeaderboardEntry {
   change?: number;
 }
 
+export interface ClassBuyoutEntry {
+  class_name: string;
+  homeroom_teacher: string;
+  homeroom_number: string;
+  student_count: number;
+  required_cans: number;
+  actual_cans: number;
+  is_eligible: boolean;
+  progress_percentage: number;
+}
+
 export interface LeaderboardData {
   topStudents: LeaderboardEntry[];
   topTeachers?: LeaderboardEntry[];
   topClasses: LeaderboardEntry[];
   topGrades: LeaderboardEntry[];
+  classBuyout?: ClassBuyoutEntry[];
   totalCans: number;
 }
 

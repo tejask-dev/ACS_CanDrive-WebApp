@@ -613,11 +613,49 @@ def get_leaderboard():
                 "totalCans": cans
             })
         
+        # Class Buyout - calculate eligibility for each class
+        class_buyout_data = []
+        class_student_counts = defaultdict(int)
+        class_can_totals = defaultdict(int)
+        
+        # Count students and cans per class
+        for student in students:
+            if student.homeroom_teacher and student.homeroom_number:
+                class_key = f"{student.homeroom_teacher} {student.homeroom_number}".strip()
+                class_student_counts[class_key] += 1
+                class_can_totals[class_key] += student.total_cans or 0
+        
+        # Calculate buyout eligibility
+        for class_name, student_count in class_student_counts.items():
+            if student_count > 0:  # Exclude classes with 0 students
+                required_cans = student_count * 10
+                actual_cans = class_can_totals[class_key]
+                is_eligible = actual_cans >= required_cans
+                
+                class_buyout_data.append({
+                    "class_name": class_name,
+                    "homeroom_teacher": class_name.split(' ', 1)[0] if ' ' in class_name else class_name,
+                    "homeroom_number": class_name.split(' ', 1)[1] if ' ' in class_name else "",
+                    "student_count": student_count,
+                    "required_cans": required_cans,
+                    "actual_cans": actual_cans,
+                    "is_eligible": is_eligible,
+                    "progress_percentage": min(100, (actual_cans / required_cans * 100)) if required_cans > 0 else 0
+                })
+        
+        # Sort by eligibility (eligible first), then by actual cans (highest first)
+        class_buyout_data.sort(key=lambda x: (not x["is_eligible"], -x["actual_cans"]))
+        
+        # Get first 20 eligible classes for leaderboard
+        eligible_classes = [cls for cls in class_buyout_data if cls["is_eligible"]][:20]
+
         return {
             "topStudents": top_students,
             "topClasses": top_classes,
             "topGrades": top_grades,
             "topTeachers": top_teachers,
+            "classBuyout": eligible_classes,
+            "allClassBuyout": class_buyout_data,  # For admin panel
             "totalCans": total_cans
         }
         
@@ -628,6 +666,8 @@ def get_leaderboard():
             "topClasses": [],
             "topGrades": [],
             "topTeachers": [],
+            "classBuyout": [],
+            "allClassBuyout": [],
             "totalCans": 0,
             "error": str(e)
         }
