@@ -624,12 +624,15 @@ def get_leaderboard():
                 class_key = f"{student.homeroom_teacher} {student.homeroom_number}".strip()
                 class_student_counts[class_key] += 1
                 class_can_totals[class_key] += student.total_cans or 0
+                print(f"DEBUG: Class {class_key} - Student: {student.first_name} {student.last_name}, Cans: {student.total_cans or 0}")
+        
+        print(f"DEBUG: Class totals: {dict(class_can_totals)}")
         
         # Calculate buyout eligibility
         for class_name, student_count in class_student_counts.items():
             if student_count > 0:  # Exclude classes with 0 students
                 required_cans = student_count * 10
-                actual_cans = class_can_totals[class_key]
+                actual_cans = class_can_totals[class_name]
                 is_eligible = actual_cans >= required_cans
                 
                 class_buyout_data.append({

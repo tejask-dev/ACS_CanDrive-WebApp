@@ -477,7 +477,7 @@ const Landing = () => {
               <Box
                 sx={{
                   display: 'grid',
-                  gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' },
+                  gridTemplateColumns: { xs: '1fr', md: 'repeat(4, 1fr)' },
                   gap: 4,
                 }}
               >
@@ -674,6 +674,70 @@ const Landing = () => {
                     )) || (
                       <Typography sx={{ textAlign: 'center', color: 'hsl(240, 4%, 46%)' }}>
                         No data yet
+                      </Typography>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Class Buyout */}
+                <Card
+                  sx={{
+                    bgcolor: 'rgba(255,255,255,0.95)',
+                    backdropFilter: 'blur(10px)',
+                    borderRadius: 4,
+                    boxShadow: '0 8px 30px rgba(0,0,0,0.2)',
+                  }}
+                >
+                  <CardContent sx={{ p: 4 }}>
+                    <Typography
+                      variant="h5"
+                      sx={{
+                        fontWeight: 700,
+                        color: 'hsl(142, 76%, 36%)',
+                        mb: 3,
+                        textAlign: 'center',
+                      }}
+                    >
+                      🎯 Class Buyout
+                    </Typography>
+                    {loading ? (
+                      <Typography sx={{ textAlign: 'center', color: 'hsl(240, 4%, 46%)' }}>
+                        Loading...
+                      </Typography>
+                    ) : leaderboardData?.classBuyout?.slice(0, 5).map((classData: any, index: number) => (
+                      <Box
+                        key={classData.class_name}
+                        sx={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          p: 2,
+                          mb: 2,
+                          bgcolor: classData.is_eligible ? 'hsl(142, 76%, 97%)' : 'hsl(240, 5%, 98%)',
+                          borderRadius: 2,
+                          border: classData.is_eligible ? '2px solid hsl(142, 76%, 85%)' : '1px solid hsl(240, 6%, 90%)',
+                        }}
+                      >
+                        <Box>
+                          <Typography sx={{ fontWeight: 600, color: 'hsl(240, 6%, 25%)' }}>
+                            {classData.homeroom_teacher}
+                          </Typography>
+                          <Typography variant="caption" sx={{ color: 'hsl(240, 4%, 46%)' }}>
+                            Room {classData.homeroom_number}
+                          </Typography>
+                        </Box>
+                        <Box sx={{ textAlign: 'right' }}>
+                          <Badge className={classData.is_eligible ? "bg-green-500 text-white" : "bg-yellow-500 text-white"}>
+                            {classData.is_eligible ? '✓ Eligible' : `${Math.round(classData.progress_percentage)}%`}
+                          </Badge>
+                          <Typography variant="caption" sx={{ display: 'block', color: 'hsl(240, 4%, 46%)', mt: 0.5 }}>
+                            {classData.actual_cans}/{classData.required_cans} cans
+                          </Typography>
+                        </Box>
+                      </Box>
+                    )) || (
+                      <Typography sx={{ textAlign: 'center', color: 'hsl(240, 4%, 46%)' }}>
+                        No eligible classes yet
                       </Typography>
                     )}
                   </CardContent>
