@@ -477,7 +477,7 @@ const Landing = () => {
               <Box
                 sx={{
                   display: 'grid',
-                  gridTemplateColumns: { xs: '1fr', md: 'repeat(4, 1fr)' },
+                  gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' },
                   gap: 4,
                 }}
               >
