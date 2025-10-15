@@ -627,6 +627,7 @@ def get_leaderboard():
                 print(f"DEBUG: Class {class_key} - Student: {student.first_name} {student.last_name}, Cans: {student.total_cans or 0}")
         
         print(f"DEBUG: Class totals: {dict(class_can_totals)}")
+        print("DEBUG: Daily leaderboard reset triggered - backend redeployed")
         
         # Calculate buyout eligibility
         for class_name, student_count in class_student_counts.items():
