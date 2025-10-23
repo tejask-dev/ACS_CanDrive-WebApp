@@ -1,51 +1,93 @@
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { Container, Typography, Box, Stack, Card, CardContent, Button as MUIButton } from '@mui/material';
-import { PersonAdd, Map, TrendingUp, EmojiEvents, Refresh } from '@mui/icons-material';
+import { Container, Typography, Box, Stack, Card, CardContent, Button as MUIButton, Dialog, DialogTitle, DialogContent, DialogActions, TextField } from '@mui/material';
+import { PersonAdd, Map, TrendingUp, EmojiEvents, Lock } from '@mui/icons-material';
 // import AcsCanLogo from '@/assets/acs-can-logo.svg';
 // import { Button } from '@/components/ui/button';
-import { useState, useEffect } from 'react';
-import api from '@/services/api';
-import { API_ENDPOINTS } from '@/config/api';
+import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import DailyDonors from './DailyDonors';
 
 const Landing = () => {
   const navigate = useNavigate();
 
-  // Fetch leaderboard data
-  const [leaderboardData, setLeaderboardData] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  // Password protection state
+  const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
+  const [password, setPassword] = useState('');
+  const [passwordError, setPasswordError] = useState('');
 
-  const loadLeaderboard = async () => {
-    try {
-      console.log('Fetching leaderboard data for landing page...');
-      const response = await api.get(API_ENDPOINTS.EVENTS.LEADERBOARD('1'));
-      console.log('Landing page leaderboard response:', response.data);
-      console.log('Top students from API:', response.data.topStudents);
-      setLeaderboardData(response.data);
-    } catch (error) {
-      console.error('Failed to load leaderboard:', error);
-      // Set empty data on error
-      setLeaderboardData({
-        topStudents: [],
-        topClasses: [],
-        topGrades: [],
-        totalCans: 0
-      });
-    } finally {
-      setLoading(false);
+  // Password protection functions
+  const handleViewLeaderboard = () => {
+    setPasswordDialogOpen(true);
+    setPassword('');
+    setPasswordError('');
+  };
+
+  const handlePasswordSubmit = () => {
+    if (password === 'Assumption_raiders') {
+      setPasswordDialogOpen(false);
+      setPassword('');
+      setPasswordError('');
+      
+      // Trigger confetti animation
+      triggerConfetti();
+      
+      // Navigate to leaderboard after a short delay
+      setTimeout(() => {
+        navigate('/leaderboard');
+      }, 1000);
+    } else {
+      setPasswordError('Incorrect password. Please try again.');
     }
   };
 
-  useEffect(() => {
-    loadLeaderboard();
+  const triggerConfetti = () => {
+    // Simple confetti effect using CSS animations
+    const confettiElement = document.createElement('div');
+    confettiElement.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 9999;
+    `;
     
-    // Auto-refresh every 10 seconds
-    const interval = setInterval(loadLeaderboard, 10000);
+    // Create multiple confetti pieces
+    for (let i = 0; i < 50; i++) {
+      const piece = document.createElement('div');
+      piece.style.cssText = `
+        position: absolute;
+        width: 10px;
+        height: 10px;
+        background: ${['#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#feca57', '#ff9ff3'][Math.floor(Math.random() * 6)]};
+        left: ${Math.random() * 100}%;
+        top: -10px;
+        animation: confetti-fall ${2 + Math.random() * 3}s linear forwards;
+      `;
+      confettiElement.appendChild(piece);
+    }
     
-    return () => clearInterval(interval);
-  }, []);
+    // Add CSS animation
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes confetti-fall {
+        to {
+          transform: translateY(100vh) rotate(720deg);
+        }
+      }
+    `;
+    document.head.appendChild(style);
+    
+    document.body.appendChild(confettiElement);
+    
+    // Remove after animation
+    setTimeout(() => {
+      document.body.removeChild(confettiElement);
+      document.head.removeChild(style);
+    }, 5000);
+  };
 
   const features = [
     {
@@ -262,7 +304,7 @@ const Landing = () => {
 
               <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.98 }}>
                 <MUIButton
-                  onClick={() => navigate('/leaderboard')}
+                  onClick={handleViewLeaderboard}
                   sx={{
                     px: 4,
                     py: 1.5,
@@ -278,6 +320,7 @@ const Landing = () => {
                     }
                   }}
                 >
+                  <Lock sx={{ mr: 1, fontSize: '1.1rem' }} />
                   View Leaderboard
                 </MUIButton>
               </motion.div>
@@ -458,20 +501,6 @@ const Landing = () => {
                 >
                   See who's leading the charge in our can drive!
                 </Typography>
-                <MUIButton
-                  onClick={() => loadLeaderboard()}
-                  sx={{
-                    minWidth: 'auto',
-                    p: 1,
-                    color: 'rgba(255,255,255,0.9)',
-                    '&:hover': {
-                      bgcolor: 'rgba(255,255,255,0.1)',
-                    }
-                  }}
-                  title="Refresh Leaderboard"
-                >
-                  <Refresh />
-                </MUIButton>
               </Box>
 
               <Box
@@ -502,50 +531,29 @@ const Landing = () => {
                     >
                       Top Students
                     </Typography>
-                    {loading ? (
-                      <Typography sx={{ textAlign: 'center', color: 'hsl(240, 4%, 46%)' }}>
-                        Loading...
-                      </Typography>
-                    ) : leaderboardData?.topStudents?.slice(0, 5).map((student: any, index: number) => {
-                      console.log(`Rendering student ${index + 1}:`, student);
-                      return (
-                      <Box
-                        key={student.id}
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        p: 4,
+                        bgcolor: 'hsl(270, 60%, 97%)',
+                        borderRadius: 2,
+                        border: '2px solid hsl(270, 60%, 85%)',
+                        textAlign: 'center',
+                      }}
+                    >
+                      <Typography
                         sx={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          p: 2,
-                          mb: 2,
-                          bgcolor: index < 3 ? 'hsl(270, 60%, 97%)' : 'hsl(240, 5%, 98%)',
-                          borderRadius: 2,
-                          border: index < 3 ? '2px solid hsl(270, 60%, 85%)' : '1px solid hsl(240, 6%, 90%)',
+                          fontSize: '1.2rem',
+                          fontWeight: 700,
+                          color: 'hsl(270, 60%, 50%)',
+                          textAlign: 'center',
                         }}
                       >
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                          <Typography
-                            sx={{
-                              fontSize: '1.5rem',
-                              fontWeight: 700,
-                              color: index === 0 ? 'hsl(270, 60%, 50%)' : 'hsl(240, 6%, 50%)',
-                            }}
-                          >
-                            {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${index + 1}`}
-                          </Typography>
-                          <Typography sx={{ fontWeight: 600, color: 'hsl(240, 6%, 25%)' }}>
-                            {student.name}
-                          </Typography>
-                        </Box>
-                        <Badge className="bg-primary text-white">
-                          {student.totalCans || 0} cans
-                        </Badge>
-                      </Box>
-                      );
-                    }) || (
-                      <Typography sx={{ textAlign: 'center', color: 'hsl(240, 4%, 46%)' }}>
-                        No data yet
+                        🎉 FINAL numbers will be revealed at the assembly! 🎉
                       </Typography>
-                    )}
+                    </Box>
                   </CardContent>
                 </Card>
 
@@ -570,47 +578,29 @@ const Landing = () => {
                     >
                       Top Classes
                     </Typography>
-                    {loading ? (
-                      <Typography sx={{ textAlign: 'center', color: 'hsl(240, 4%, 46%)' }}>
-                        Loading...
-                      </Typography>
-                    ) : leaderboardData?.topClasses?.slice(0, 5).map((cls: any, index: number) => (
-                      <Box
-                        key={cls.homeroom}
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        p: 4,
+                        bgcolor: 'hsl(270, 60%, 97%)',
+                        borderRadius: 2,
+                        border: '2px solid hsl(270, 60%, 85%)',
+                        textAlign: 'center',
+                      }}
+                    >
+                      <Typography
                         sx={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          p: 2,
-                          mb: 2,
-                          bgcolor: index < 3 ? 'hsl(270, 60%, 97%)' : 'hsl(240, 5%, 98%)',
-                          borderRadius: 2,
-                          border: index < 3 ? '2px solid hsl(270, 60%, 85%)' : '1px solid hsl(240, 6%, 90%)',
+                          fontSize: '1.2rem',
+                          fontWeight: 700,
+                          color: 'hsl(270, 60%, 50%)',
+                          textAlign: 'center',
                         }}
                       >
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                          <Typography
-                            sx={{
-                              fontSize: '1.5rem',
-                              fontWeight: 700,
-                              color: index === 0 ? 'hsl(270, 60%, 50%)' : 'hsl(240, 6%, 50%)',
-                            }}
-                          >
-                            {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${index + 1}`}
-                          </Typography>
-                          <Typography sx={{ fontWeight: 600, color: 'hsl(240, 6%, 25%)' }}>
-                            {cls.name || cls.homeroom}
-                          </Typography>
-                        </Box>
-                        <Badge className="bg-secondary text-white">
-                          {cls.totalCans || 0} cans
-                        </Badge>
-                      </Box>
-                    )) || (
-                      <Typography sx={{ textAlign: 'center', color: 'hsl(240, 4%, 46%)' }}>
-                        No data yet
+                        🎉 FINAL numbers will be revealed at the assembly! 🎉
                       </Typography>
-                    )}
+                    </Box>
                   </CardContent>
                 </Card>
 
@@ -635,47 +625,29 @@ const Landing = () => {
                     >
                       Top Grades
                     </Typography>
-                    {loading ? (
-                      <Typography sx={{ textAlign: 'center', color: 'hsl(240, 4%, 46%)' }}>
-                        Loading...
-                      </Typography>
-                    ) : leaderboardData?.topGrades?.slice(0, 5).map((grade: any, index: number) => (
-                      <Box
-                        key={grade.grade}
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        p: 4,
+                        bgcolor: 'hsl(270, 60%, 97%)',
+                        borderRadius: 2,
+                        border: '2px solid hsl(270, 60%, 85%)',
+                        textAlign: 'center',
+                      }}
+                    >
+                      <Typography
                         sx={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          p: 2,
-                          mb: 2,
-                          bgcolor: index < 3 ? 'hsl(270, 60%, 97%)' : 'hsl(240, 5%, 98%)',
-                          borderRadius: 2,
-                          border: index < 3 ? '2px solid hsl(270, 60%, 85%)' : '1px solid hsl(240, 6%, 90%)',
+                          fontSize: '1.2rem',
+                          fontWeight: 700,
+                          color: 'hsl(270, 60%, 50%)',
+                          textAlign: 'center',
                         }}
                       >
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                          <Typography
-                            sx={{
-                              fontSize: '1.5rem',
-                              fontWeight: 700,
-                              color: index === 0 ? 'hsl(270, 60%, 50%)' : 'hsl(240, 6%, 50%)',
-                            }}
-                          >
-                            {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${index + 1}`}
-                          </Typography>
-                          <Typography sx={{ fontWeight: 600, color: 'hsl(240, 6%, 25%)' }}>
-                            Grade {grade.grade}
-                          </Typography>
-                        </Box>
-                        <Badge className="bg-accent text-white">
-                          {grade.totalCans || 0} cans
-                        </Badge>
-                      </Box>
-                    )) || (
-                      <Typography sx={{ textAlign: 'center', color: 'hsl(240, 4%, 46%)' }}>
-                        No data yet
+                        🎉 FINAL numbers will be revealed at the assembly! 🎉
                       </Typography>
-                    )}
+                    </Box>
                   </CardContent>
                 </Card>
 
@@ -700,46 +672,29 @@ const Landing = () => {
                     >
                       🎯 Class Buyout
                     </Typography>
-                    {loading ? (
-                      <Typography sx={{ textAlign: 'center', color: 'hsl(240, 4%, 46%)' }}>
-                        Loading...
-                      </Typography>
-                    ) : leaderboardData?.classBuyout?.slice(0, 5).map((classData: any, index: number) => (
-                      <Box
-                        key={classData.class_name}
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        p: 4,
+                        bgcolor: 'hsl(142, 76%, 97%)',
+                        borderRadius: 2,
+                        border: '2px solid hsl(142, 76%, 85%)',
+                        textAlign: 'center',
+                      }}
+                    >
+                      <Typography
                         sx={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          p: 2,
-                          mb: 2,
-                          bgcolor: classData.is_eligible ? 'hsl(142, 76%, 97%)' : 'hsl(240, 5%, 98%)',
-                          borderRadius: 2,
-                          border: classData.is_eligible ? '2px solid hsl(142, 76%, 85%)' : '1px solid hsl(240, 6%, 90%)',
+                          fontSize: '1.2rem',
+                          fontWeight: 700,
+                          color: 'hsl(142, 76%, 36%)',
+                          textAlign: 'center',
                         }}
                       >
-                        <Box>
-                          <Typography sx={{ fontWeight: 600, color: 'hsl(240, 6%, 25%)' }}>
-                            {classData.homeroom_teacher}
-                          </Typography>
-                          <Typography variant="caption" sx={{ color: 'hsl(240, 4%, 46%)' }}>
-                            Room {classData.homeroom_number}
-                          </Typography>
-                        </Box>
-                        <Box sx={{ textAlign: 'right' }}>
-                          <Badge className={classData.is_eligible ? "bg-green-500 text-white" : "bg-yellow-500 text-white"}>
-                            {classData.is_eligible ? '✓ Eligible' : `${Math.round(classData.progress_percentage)}%`}
-                          </Badge>
-                          <Typography variant="caption" sx={{ display: 'block', color: 'hsl(240, 4%, 46%)', mt: 0.5 }}>
-                            {classData.actual_cans}/{classData.required_cans} cans
-                          </Typography>
-                        </Box>
-                      </Box>
-                    )) || (
-                      <Typography sx={{ textAlign: 'center', color: 'hsl(240, 4%, 46%)' }}>
-                        No eligible classes yet
+                        🎉 FINAL numbers will be revealed at the assembly! 🎉
                       </Typography>
-                    )}
+                    </Box>
                   </CardContent>
                 </Card>
               </Box>
@@ -781,6 +736,77 @@ const Landing = () => {
           </motion.div>
         </Box>
       </Container>
+
+      {/* Password Dialog */}
+      <Dialog 
+        open={passwordDialogOpen} 
+        onClose={() => setPasswordDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle sx={{ textAlign: 'center', color: 'hsl(270, 60%, 50%)', fontWeight: 700 }}>
+          🔒 Enter Password to View Leaderboard
+        </DialogTitle>
+        <DialogContent>
+          <Typography sx={{ textAlign: 'center', mb: 2, color: 'hsl(240, 6%, 25%)' }}>
+            Numbers to be revealed at the assembly!
+          </Typography>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Password"
+            type="password"
+            fullWidth
+            variant="outlined"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            error={!!passwordError}
+            helperText={passwordError}
+            onKeyPress={(e) => {
+              if (e.key === 'Enter') {
+                handlePasswordSubmit();
+              }
+            }}
+            sx={{
+              '& .MuiOutlinedInput-root': {
+                '&:hover fieldset': {
+                  borderColor: 'hsl(270, 60%, 50%)',
+                },
+                '&.Mui-focused fieldset': {
+                  borderColor: 'hsl(270, 60%, 50%)',
+                },
+              },
+            }}
+          />
+        </DialogContent>
+        <DialogActions sx={{ justifyContent: 'center', pb: 3 }}>
+          <MUIButton
+            onClick={() => setPasswordDialogOpen(false)}
+            sx={{
+              color: 'hsl(240, 6%, 46%)',
+              mr: 2,
+            }}
+          >
+            Cancel
+          </MUIButton>
+          <MUIButton
+            onClick={handlePasswordSubmit}
+            sx={{
+              px: 4,
+              py: 1,
+              fontWeight: 700,
+              borderRadius: 2,
+              color: '#fff',
+              background: 'linear-gradient(135deg, hsl(270, 60%, 50%) 0%, hsl(270, 60%, 40%) 100%)',
+              '&:hover': {
+                background: 'linear-gradient(135deg, hsl(270, 60%, 60%) 0%, hsl(270, 60%, 50%) 100%)',
+              }
+            }}
+          >
+            Enter
+          </MUIButton>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
