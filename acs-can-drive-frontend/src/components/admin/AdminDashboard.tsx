@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import api from '@/services/api';
 import {
   Box,
   AppBar,
@@ -43,9 +44,16 @@ const AdminDashboard = () => {
   const [drawerOpen, setDrawerOpen] = useState(true);
   const [activeTab, setActiveTab] = useState('dashboard');
 
-  // Auth temporarily disabled for testing access to admin dashboard
+  // Authentication check - redirect to login if not authenticated
   useEffect(() => {
-    // no-op
+    const token = localStorage.getItem('authToken');
+    if (!token) {
+      navigate('/admin/login');
+      return;
+    }
+    
+    // Token exists, but we'll let the API interceptor handle validation
+    // If any API call fails with 401, the interceptor will redirect to login
   }, [navigate]);
 
   const handleLogout = () => {

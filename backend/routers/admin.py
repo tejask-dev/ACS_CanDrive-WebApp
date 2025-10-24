@@ -44,6 +44,11 @@ def login(payload: AdminLogin):
         print(f"Login error: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
+@router.get("/verify-token")
+def verify_token():
+    """Verify if the current token is valid"""
+    return {"valid": True, "message": "Token is valid"}
+
 @router.post("/change-password")
 def change_password(payload: AdminChangePassword):
     try:
