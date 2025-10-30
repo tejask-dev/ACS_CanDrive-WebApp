@@ -15,12 +15,35 @@ const Landing = () => {
   const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
   const [password, setPassword] = useState('');
   const [passwordError, setPasswordError] = useState('');
+  
+  // Assembly reveal state
+  const [revealDialogOpen, setRevealDialogOpen] = useState(false);
+  const [revealPassword, setRevealPassword] = useState('');
+  const [revealPasswordError, setRevealPasswordError] = useState('');
 
   // Password protection functions
   const handleViewLeaderboard = () => {
     setPasswordDialogOpen(true);
     setPassword('');
     setPasswordError('');
+  };
+
+  // Assembly reveal functions
+  const handleAssemblyReveal = () => {
+    setRevealDialogOpen(true);
+    setRevealPassword('');
+    setRevealPasswordError('');
+  };
+
+  const handleRevealPasswordSubmit = () => {
+    if (revealPassword === 'Assumption_raiders') {
+      setRevealDialogOpen(false);
+      setRevealPassword('');
+      setRevealPasswordError('');
+      navigate('/assembly-reveal');
+    } else {
+      setRevealPasswordError('Incorrect password. Please try again.');
+    }
   };
 
   const handlePasswordSubmit = () => {
@@ -322,6 +345,29 @@ const Landing = () => {
                 >
                   <Lock sx={{ mr: 1, fontSize: '1.1rem' }} />
                   View Leaderboard
+                </MUIButton>
+              </motion.div>
+
+              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.98 }}>
+                <MUIButton
+                  onClick={handleAssemblyReveal}
+                  sx={{
+                    px: 4,
+                    py: 1.5,
+                    fontWeight: 800,
+                    fontSize: { xs: '0.95rem', md: '1.05rem' },
+                    borderRadius: 3,
+                    color: '#fff',
+                    boxShadow: '0 10px 30px rgba(0,0,0,0.2)',
+                    background: 'linear-gradient(135deg, hsl(142, 76%, 36%) 0%, hsl(142, 76%, 50%) 100%)',
+                    '&:hover': {
+                      background: 'linear-gradient(135deg, hsl(142, 76%, 45%) 0%, hsl(142, 76%, 55%) 100%)',
+                      transform: 'translateY(-1px)'
+                    }
+                  }}
+                >
+                  <Lock sx={{ mr: 1, fontSize: '1.1rem' }} />
+                  🎉 Assembly Reveal 🎉
                 </MUIButton>
               </motion.div>
             </Stack>
@@ -804,6 +850,77 @@ const Landing = () => {
             }}
           >
             Enter
+          </MUIButton>
+        </DialogActions>
+      </Dialog>
+
+      {/* Assembly Reveal Password Dialog */}
+      <Dialog 
+        open={revealDialogOpen} 
+        onClose={() => setRevealDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle sx={{ textAlign: 'center', color: 'hsl(142, 76%, 36%)', fontWeight: 700 }}>
+          🎉 Enter Password for Assembly Reveal 🎉
+        </DialogTitle>
+        <DialogContent>
+          <Typography sx={{ textAlign: 'center', mb: 2, color: 'hsl(240, 6%, 25%)' }}>
+            Ready to reveal the amazing results? Enter the password to begin the reveal!
+          </Typography>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Password"
+            type="password"
+            fullWidth
+            variant="outlined"
+            value={revealPassword}
+            onChange={(e) => setRevealPassword(e.target.value)}
+            error={!!revealPasswordError}
+            helperText={revealPasswordError}
+            onKeyPress={(e) => {
+              if (e.key === 'Enter') {
+                handleRevealPasswordSubmit();
+              }
+            }}
+            sx={{
+              '& .MuiOutlinedInput-root': {
+                '&:hover fieldset': {
+                  borderColor: 'hsl(142, 76%, 36%)',
+                },
+                '&.Mui-focused fieldset': {
+                  borderColor: 'hsl(142, 76%, 36%)',
+                },
+              },
+            }}
+          />
+        </DialogContent>
+        <DialogActions sx={{ justifyContent: 'center', pb: 3 }}>
+          <MUIButton
+            onClick={() => setRevealDialogOpen(false)}
+            sx={{
+              color: 'hsl(240, 6%, 46%)',
+              mr: 2,
+            }}
+          >
+            Cancel
+          </MUIButton>
+          <MUIButton
+            onClick={handleRevealPasswordSubmit}
+            sx={{
+              px: 4,
+              py: 1,
+              fontWeight: 700,
+              borderRadius: 2,
+              color: '#fff',
+              background: 'linear-gradient(135deg, hsl(142, 76%, 36%) 0%, hsl(142, 76%, 26%) 100%)',
+              '&:hover': {
+                background: 'linear-gradient(135deg, hsl(142, 76%, 45%) 0%, hsl(142, 76%, 35%) 100%)',
+              }
+            }}
+          >
+            Reveal!
           </MUIButton>
         </DialogActions>
       </Dialog>

@@ -13,6 +13,7 @@ import TeacherMapReservation from "@/components/pages/TeacherMapReservation";
 import Leaderboard from "@/components/pages/Leaderboard";
 import AdminLogin from "@/components/pages/AdminLogin";
 import AdminDashboard from "@/components/admin/AdminDashboard";
+import AssemblyReveal from "@/components/pages/AssemblyReveal";
 import NotFound from "@/components/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -89,6 +90,7 @@ const App = () => (
             <Route path="/teacher-signup" element={<TeacherSignup />} />
             <Route path="/teacher-map-reservation" element={<TeacherMapReservation />} />
             <Route path="/leaderboard" element={<Leaderboard />} />
+            <Route path="/assembly-reveal" element={<AssemblyReveal />} />
             <Route path="/admin/login" element={<AdminLogin />} />
             <Route path="/admin/dashboard" element={<AdminDashboard />} />
             <Route path="*" element={<NotFound />} />
