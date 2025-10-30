@@ -478,7 +478,7 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
         }}
       >
         {/* Existing reservations with highlighting */}
-        {reservations.map((reservation) => {
+        {isLoaded && reservations.map((reservation) => {
           const r: any = reservation;
           const pos = getLatLng(r);
           if (!pos) {
@@ -488,19 +488,21 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
           return (
             <React.Fragment key={key}>
               {/* Highlight circle around reserved street */}
-              <Circle
-                center={pos}
-                radius={300} // 300 meters radius - visible highlight
-                options={{
-                  fillColor: '#3b82f6', // Blue color
-                  fillOpacity: 0.2,
-                  strokeColor: '#2563eb',
-                  strokeOpacity: 0.6,
-                  strokeWeight: 3,
-                  clickable: false,
-                  zIndex: 1,
-                }}
-              />
+              {map && (
+                <Circle
+                  center={pos}
+                  radius={500} // 500 meters radius - more visible highlight
+                  options={{
+                    fillColor: '#3b82f6', // Blue color
+                    fillOpacity: 0.25,
+                    strokeColor: '#2563eb',
+                    strokeOpacity: 0.8,
+                    strokeWeight: 4,
+                    clickable: false,
+                    zIndex: 1,
+                  }}
+                />
+              )}
               {/* Marker for reserved street */}
               <Marker
                 position={pos}

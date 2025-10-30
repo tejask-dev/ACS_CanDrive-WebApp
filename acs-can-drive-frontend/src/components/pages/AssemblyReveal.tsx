@@ -30,9 +30,8 @@ const AssemblyReveal = () => {
       const response = await api.get(API_ENDPOINTS.EVENTS.LEADERBOARD('1'));
       setLeaderboardData(response.data);
       
-      // Calculate total cans
-      const total = response.data.topStudents?.reduce((sum: number, student: any) => 
-        sum + (student.totalCans || 0), 0) || 0;
+      // Use the totalCans from API response (already calculated correctly on backend)
+      const total = response.data.totalCans || 0;
       setTargetTotalCans(total);
       
       setLoading(false);
