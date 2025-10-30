@@ -515,13 +515,19 @@ def get_leaderboard():
                 "totalCans": 0
             }
         
-        # Use existing total_cans values directly - no recalculation to prevent double counting
-        # The total_cans field should already contain the correct values
+        # Calculate total cans from donations table (source of truth)
+        # This ensures accuracy even if total_cans fields have inconsistencies
+        donations = db.query(Donation).filter(Donation.event_id == 1).all()
+        total_cans_from_donations = sum(donation.amount or 0 for donation in donations)
         
-        # Calculate total cans from students and teachers
+        # Also calculate from total_cans fields (respects manual edits)
         student_cans = sum(student.total_cans or 0 for student in students)
         teacher_cans = sum(teacher.total_cans or 0 for teacher in teachers)
-        total_cans = student_cans + teacher_cans
+        total_cans_from_fields = student_cans + teacher_cans
+        
+        # Use the higher value to account for both donations and manual edits
+        # This ensures we capture all cans whether from donations or manual entry
+        total_cans = max(total_cans_from_donations, total_cans_from_fields)
         
         # Top Students - sort by total_cans descending
         students_sorted = sorted(students, key=lambda s: s.total_cans or 0, reverse=True)

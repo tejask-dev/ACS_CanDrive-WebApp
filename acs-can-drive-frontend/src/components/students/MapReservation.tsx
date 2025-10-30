@@ -1,5 +1,5 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
-import { GoogleMap, useJsApiLoader, Marker, InfoWindow, Autocomplete } from '@react-google-maps/api';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
+import { GoogleMap, useJsApiLoader, Marker, InfoWindow, Autocomplete, Polyline, Circle } from '@react-google-maps/api';
 import { Box, TextField, Button, Chip, Stack, Paper, Typography, CircularProgress, Autocomplete as MuiAutocomplete } from '@mui/material';
 import { CheckCircle, LocationOn, Close, Add, Person } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -477,38 +477,53 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
           mapTypeControl: false,
         }}
       >
-        {/* Existing reservations */}
+        {/* Existing reservations with highlighting */}
         {reservations.map((reservation) => {
           const r: any = reservation;
           const pos = getLatLng(r);
-          console.log('Rendering reservation marker:', { reservation: r, pos });
           if (!pos) {
-            console.log('No position found for reservation:', r);
             return null;
           }
           const key = r.id || `${r.street_name || r.streetName}-${pos.lat}-${pos.lng}`;
           return (
-          <Marker
-              key={key}
-              position={pos}
-            label={{
-                text: getInitials(r.studentName || r.name || ''),
-              color: 'white',
-              fontWeight: 'bold',
-            }}
-            icon={{
-                url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
-                  <svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
-                    <circle cx="20" cy="20" r="18" fill="#ef4444" stroke="white" stroke-width="3"/>
-                    <text x="20" y="26" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" font-weight="bold" fill="white">
-                      ${getInitials(r.studentName || r.name || '')}
-                    </text>
-                  </svg>
-                `),
-                scaledSize: new google.maps.Size(40, 40),
-                anchor: new google.maps.Point(20, 20),
-              }}
-            />
+            <React.Fragment key={key}>
+              {/* Highlight circle around reserved street */}
+              <Circle
+                center={pos}
+                radius={300} // 300 meters radius - visible highlight
+                options={{
+                  fillColor: '#3b82f6', // Blue color
+                  fillOpacity: 0.2,
+                  strokeColor: '#2563eb',
+                  strokeOpacity: 0.6,
+                  strokeWeight: 3,
+                  clickable: false,
+                  zIndex: 1,
+                }}
+              />
+              {/* Marker for reserved street */}
+              <Marker
+                position={pos}
+                label={{
+                  text: getInitials(r.studentName || r.name || ''),
+                  color: 'white',
+                  fontWeight: 'bold',
+                }}
+                icon={{
+                  url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
+                    <svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+                      <circle cx="20" cy="20" r="18" fill="#3b82f6" stroke="white" stroke-width="3"/>
+                      <text x="20" y="26" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" font-weight="bold" fill="white">
+                        ${getInitials(r.studentName || r.name || '')}
+                      </text>
+                    </svg>
+                  `),
+                  scaledSize: new google.maps.Size(40, 40),
+                  anchor: new google.maps.Point(20, 20),
+                }}
+                zIndex={2}
+              />
+            </React.Fragment>
           );
         })}
 
@@ -644,18 +659,6 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
           </InfoWindow>
         )}
       </GoogleMap>
-
-      {/* Debug Info */}
-      <Box sx={{ p: 2, bgcolor: 'grey.100', borderRadius: 1, mb: 2 }}>
-        <Typography variant="caption">
-          Debug: myReservations.length = {myReservations.length}, tempStreets.length = {tempStreets.length}, totalReservations = {reservations.length}
-        </Typography>
-        {reservations.length > 0 && (
-          <Typography variant="caption" sx={{ display: 'block', mt: 1 }}>
-            Reservations: {reservations.map(r => `${r.street_name || r.streetName} (${r.studentName || r.name})`).join(', ')}
-          </Typography>
-        )}
-      </Box>
 
       {/* My Reservations */}
       <AnimatePresence>
