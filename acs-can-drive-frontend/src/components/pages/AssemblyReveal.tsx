@@ -27,7 +27,7 @@ const AssemblyReveal = () => {
 
   useEffect(() => {
     loadLeaderboardData();
-    triggerConfetti();
+    // Initial confetti will be triggered when top class appears (currentStep === 0)
   }, []);
 
   const loadLeaderboardData = async () => {
@@ -44,18 +44,10 @@ const AssemblyReveal = () => {
       // Start animation sequence: class (immediate) -> donors (10s) -> total (20s)
       setTimeout(() => {
         setCurrentStep(1); // Show donors after 10s
-        // Scroll to donors section
-        setTimeout(() => {
-          donorsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }, 100);
       }, 10000);
       
       setTimeout(() => {
         setCurrentStep(2); // Show total after 20s (10s after donors)
-        // Scroll to total section
-        setTimeout(() => {
-          totalSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }, 100);
       }, 20000);
     } catch (error) {
       console.error('Failed to load leaderboard:', error);
@@ -63,15 +55,47 @@ const AssemblyReveal = () => {
     }
   };
 
-  // Scroll to top class section when it first appears
+  // Scroll to top class section when it first appears and trigger confetti
   useEffect(() => {
     const topClassData = leaderboardData?.topClasses?.[0];
-    if (currentStep >= 0 && topClassData) {
+    if (currentStep === 0 && topClassData) {
       setTimeout(() => {
         classSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }, 100);
+      // Trigger confetti for top class reveal
+      triggerConfetti();
     }
   }, [currentStep, leaderboardData]);
+
+  // Scroll to donors section when it appears and trigger confetti
+  useEffect(() => {
+    if (currentStep === 1) {
+      setTimeout(() => {
+        donorsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
+      // Trigger confetti for top students reveal
+      triggerConfetti();
+    }
+  }, [currentStep]);
+
+  // Scroll to total section when it appears and trigger confetti
+  useEffect(() => {
+    if (currentStep === 2) {
+      // Trigger confetti for total cans reveal
+      triggerConfetti();
+      setTimeout(() => {
+        // Use window.scrollTo to ensure it scrolls down, not up
+        if (totalSectionRef.current) {
+          const rect = totalSectionRef.current.getBoundingClientRect();
+          const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+          window.scrollTo({ 
+            top: scrollTop + rect.top - 100, 
+            behavior: 'smooth' 
+          });
+        }
+      }, 300);
+    }
+  }, [currentStep]);
 
   // Count up animation for total cans - starts when currentStep >= 2 (Total Cans section appears)
   useEffect(() => {
