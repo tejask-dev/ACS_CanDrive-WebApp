@@ -16,7 +16,7 @@ const AssemblyReveal = () => {
   const navigate = useNavigate();
   const [leaderboardData, setLeaderboardData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [currentStep, setCurrentStep] = useState(0); // 0: total, 1: donors, 2: class
+  const [currentStep, setCurrentStep] = useState(0); // 0: class, 1: donors, 2: total
   const [totalCans, setTotalCans] = useState(0);
   const [targetTotalCans, setTargetTotalCans] = useState(0);
 
@@ -36,18 +36,21 @@ const AssemblyReveal = () => {
       
       setLoading(false);
       
-      // Start animation sequence
+      // Start animation sequence: class -> donors -> total
       setTimeout(() => setCurrentStep(1), 3000); // Show donors after 3s
-      setTimeout(() => setCurrentStep(2), 7000); // Show class after 7s
+      setTimeout(() => setCurrentStep(2), 7000); // Show total after 7s
     } catch (error) {
       console.error('Failed to load leaderboard:', error);
       setLoading(false);
     }
   };
 
-  // Count up animation for total cans
+  // Count up animation for total cans - starts when currentStep >= 2 (Total Cans section appears)
   useEffect(() => {
-    if (targetTotalCans > 0) {
+    if (targetTotalCans > 0 && currentStep >= 2) {
+      // Reset to 0 when section appears
+      setTotalCans(0);
+      
       const duration = 2000; // 2 seconds
       const steps = 60;
       const increment = targetTotalCans / steps;
@@ -66,7 +69,7 @@ const AssemblyReveal = () => {
       
       return () => clearInterval(timer);
     }
-  }, [targetTotalCans]);
+  }, [targetTotalCans, currentStep]);
 
   const triggerConfetti = () => {
     // Create massive confetti effect
@@ -218,11 +221,11 @@ const AssemblyReveal = () => {
       `}</style>
 
       <Container maxWidth="lg" sx={{ position: 'relative', zIndex: 1 }}>
-        {/* Total Cans Section */}
+        {/* Top Class Section */}
         <AnimatePresence>
-          {currentStep >= 0 && (
+          {currentStep >= 0 && topClass && (
             <motion.div
-              key="total"
+              key="class"
               initial={{ opacity: 0, y: 50, scale: 0.8 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, scale: 0.8 }}
@@ -240,11 +243,11 @@ const AssemblyReveal = () => {
                 }}
               >
                 <motion.div
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
+                  initial={{ scale: 0, rotate: 180 }}
+                  animate={{ scale: 1, rotate: 0 }}
                   transition={{ delay: 0.5, type: 'spring', stiffness: 200 }}
                 >
-                  <EmojiEvents sx={{ fontSize: 80, color: '#feca57', mb: 2 }} />
+                  <Star sx={{ fontSize: 80, color: '#feca57', mb: 2 }} />
                 </motion.div>
                 
                 <Typography
@@ -252,41 +255,43 @@ const AssemblyReveal = () => {
                   sx={{
                     fontWeight: 700,
                     color: 'hsl(240, 6%, 25%)',
-                    mb: 2,
+                    mb: 3,
                   }}
                 >
-                  Total Cans Collected
+                  🎯 Top Class 🎯
                 </Typography>
                 
                 <motion.div
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
-                  transition={{ delay: 1, type: 'spring', stiffness: 150 }}
+                  transition={{ delay: 1, type: 'spring' }}
                 >
                   <Typography
-                    variant="h1"
+                    variant="h2"
                     sx={{
-                      fontSize: { xs: '4rem', md: '6rem' },
-                      fontWeight: 900,
-                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                      WebkitBackgroundClip: 'text',
-                      WebkitTextFillColor: 'transparent',
+                      fontWeight: 800,
+                      color: 'hsl(270, 60%, 50%)',
                       mb: 2,
                     }}
                   >
-                    {totalCans.toLocaleString()}
+                    {topClass.name || topClass.homeroom}
                   </Typography>
+                  
+                  <Typography
+                    variant="h4"
+                    sx={{
+                      fontWeight: 700,
+                      color: 'hsl(240, 6%, 46%)',
+                      mb: 1,
+                    }}
+                  >
+                    {topClass.totalCans || 0} cans
+                  </Typography>
+                  
+                  <Box sx={{ mt: 3, display: 'inline-block' }}>
+                    <TrendingUp sx={{ fontSize: 60, color: '#4ecdc4' }} />
+                  </Box>
                 </motion.div>
-                
-                <Typography
-                  variant="h5"
-                  sx={{
-                    color: 'hsl(240, 6%, 46%)',
-                    fontWeight: 600,
-                  }}
-                >
-                  Amazing work, everyone! 🎉
-                </Typography>
               </Card>
             </motion.div>
           )}
@@ -406,11 +411,11 @@ const AssemblyReveal = () => {
           )}
         </AnimatePresence>
 
-        {/* Top Class Section */}
+        {/* Total Cans Section */}
         <AnimatePresence>
-          {currentStep >= 2 && topClass && (
+          {currentStep >= 2 && (
             <motion.div
-              key="class"
+              key="total"
               initial={{ opacity: 0, y: 100 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 100 }}
@@ -431,7 +436,7 @@ const AssemblyReveal = () => {
                   animate={{ scale: 1, rotate: 0 }}
                   transition={{ delay: 0.5, type: 'spring', stiffness: 200 }}
                 >
-                  <Star sx={{ fontSize: 80, color: '#feca57', mb: 2 }} />
+                  <EmojiEvents sx={{ fontSize: 80, color: '#feca57', mb: 2 }} />
                 </motion.div>
                 
                 <Typography
@@ -439,43 +444,41 @@ const AssemblyReveal = () => {
                   sx={{
                     fontWeight: 700,
                     color: 'hsl(240, 6%, 25%)',
-                    mb: 3,
+                    mb: 2,
                   }}
                 >
-                  🎯 Top Class 🎯
+                  Total Cans Collected
                 </Typography>
                 
                 <motion.div
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
-                  transition={{ delay: 1, type: 'spring' }}
+                  transition={{ delay: 1, type: 'spring', stiffness: 150 }}
                 >
                   <Typography
-                    variant="h2"
+                    variant="h1"
                     sx={{
-                      fontWeight: 800,
-                      color: 'hsl(270, 60%, 50%)',
+                      fontSize: { xs: '4rem', md: '6rem' },
+                      fontWeight: 900,
+                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent',
                       mb: 2,
                     }}
                   >
-                    {topClass.name || topClass.homeroom}
+                    {totalCans.toLocaleString()}
                   </Typography>
-                  
-                  <Typography
-                    variant="h4"
-                    sx={{
-                      fontWeight: 700,
-                      color: 'hsl(240, 6%, 46%)',
-                      mb: 1,
-                    }}
-                  >
-                    {topClass.totalCans || 0} cans
-                  </Typography>
-                  
-                  <Box sx={{ mt: 3, display: 'inline-block' }}>
-                    <TrendingUp sx={{ fontSize: 60, color: '#4ecdc4' }} />
-                  </Box>
                 </motion.div>
+                
+                <Typography
+                  variant="h5"
+                  sx={{
+                    color: 'hsl(240, 6%, 46%)',
+                    fontWeight: 600,
+                  }}
+                >
+                  Amazing work, everyone! 🎉
+                </Typography>
               </Card>
             </motion.div>
           )}
