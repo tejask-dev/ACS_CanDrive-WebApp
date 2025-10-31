@@ -41,14 +41,14 @@ const AssemblyReveal = () => {
       
       setLoading(false);
       
-      // Start animation sequence: class (immediate) -> donors (10s) -> total (20s)
+      // Start animation sequence: class (immediate) -> donors (10s) -> total (30s)
       setTimeout(() => {
         setCurrentStep(1); // Show donors after 10s
       }, 10000);
       
       setTimeout(() => {
-        setCurrentStep(2); // Show total after 20s (10s after donors)
-      }, 20000);
+        setCurrentStep(2); // Show total after 30s (20s after donors)
+      }, 30000);
     } catch (error) {
       console.error('Failed to load leaderboard:', error);
       setLoading(false);
