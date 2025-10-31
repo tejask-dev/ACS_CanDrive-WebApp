@@ -65,12 +65,13 @@ const AssemblyReveal = () => {
 
   // Scroll to top class section when it first appears
   useEffect(() => {
-    if (currentStep >= 0 && topClass) {
+    const topClassData = leaderboardData?.topClasses?.[0];
+    if (currentStep >= 0 && topClassData) {
       setTimeout(() => {
         classSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }, 100);
     }
-  }, [currentStep, topClass]);
+  }, [currentStep, leaderboardData]);
 
   // Count up animation for total cans - starts when currentStep >= 2 (Total Cans section appears)
   useEffect(() => {
