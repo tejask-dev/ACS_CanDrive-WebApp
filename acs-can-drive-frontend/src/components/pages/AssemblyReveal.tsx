@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -19,6 +19,11 @@ const AssemblyReveal = () => {
   const [currentStep, setCurrentStep] = useState(0); // 0: class, 1: donors, 2: total
   const [totalCans, setTotalCans] = useState(0);
   const [targetTotalCans, setTargetTotalCans] = useState(0);
+  
+  // Refs for scrolling to each section
+  const classSectionRef = useRef<HTMLDivElement>(null);
+  const donorsSectionRef = useRef<HTMLDivElement>(null);
+  const totalSectionRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     loadLeaderboardData();
@@ -36,14 +41,36 @@ const AssemblyReveal = () => {
       
       setLoading(false);
       
-      // Start animation sequence: class -> donors -> total
-      setTimeout(() => setCurrentStep(1), 3000); // Show donors after 3s
-      setTimeout(() => setCurrentStep(2), 7000); // Show total after 7s
+      // Start animation sequence: class (immediate) -> donors (10s) -> total (20s)
+      setTimeout(() => {
+        setCurrentStep(1); // Show donors after 10s
+        // Scroll to donors section
+        setTimeout(() => {
+          donorsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 100);
+      }, 10000);
+      
+      setTimeout(() => {
+        setCurrentStep(2); // Show total after 20s (10s after donors)
+        // Scroll to total section
+        setTimeout(() => {
+          totalSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 100);
+      }, 20000);
     } catch (error) {
       console.error('Failed to load leaderboard:', error);
       setLoading(false);
     }
   };
+
+  // Scroll to top class section when it first appears
+  useEffect(() => {
+    if (currentStep >= 0 && topClass) {
+      setTimeout(() => {
+        classSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 100);
+    }
+  }, [currentStep, topClass]);
 
   // Count up animation for total cans - starts when currentStep >= 2 (Total Cans section appears)
   useEffect(() => {
@@ -225,6 +252,7 @@ const AssemblyReveal = () => {
         <AnimatePresence>
           {currentStep >= 0 && topClass && (
             <motion.div
+              ref={classSectionRef}
               key="class"
               initial={{ opacity: 0, y: 50, scale: 0.8 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -301,6 +329,7 @@ const AssemblyReveal = () => {
         <AnimatePresence>
           {currentStep >= 1 && (
             <motion.div
+              ref={donorsSectionRef}
               key="donors"
               initial={{ opacity: 0, x: -100 }}
               animate={{ opacity: 1, x: 0 }}
@@ -415,6 +444,7 @@ const AssemblyReveal = () => {
         <AnimatePresence>
           {currentStep >= 2 && (
             <motion.div
+              ref={totalSectionRef}
               key="total"
               initial={{ opacity: 0, y: 100 }}
               animate={{ opacity: 1, y: 0 }}
