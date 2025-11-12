@@ -1,3 +1,23 @@
+/**
+ * MapReservation Component
+ * 
+ * This component provides an interactive Google Maps interface for students and teachers
+ * to reserve streets for the can drive event. It includes:
+ * - Street search and selection using Google Places Autocomplete
+ * - Visual highlighting of reserved streets with hover tooltips
+ * - Group collection functionality
+ * - Real-time reservation management
+ * 
+ * Key Features:
+ * - Uses Google Maps API to display an interactive map centered on Windsor, Ontario
+ * - Highlights reserved streets using Polylines and Circles
+ * - Shows student names on hover over reserved streets
+ * - Supports both individual and group reservations
+ * 
+ * @author ACS Can Drive Development Team
+ * @component
+ */
+
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { GoogleMap, useJsApiLoader, Marker, InfoWindow, Autocomplete, Polyline, Circle } from '@react-google-maps/api';
 import { Box, TextField, Button, Chip, Stack, Paper, Typography, CircularProgress, Autocomplete as MuiAutocomplete } from '@mui/material';
@@ -8,51 +28,83 @@ import api from '@/services/api';
 import { API_ENDPOINTS, GOOGLE_MAPS_API_KEY } from '@/config/api';
 import type { MapReservation as MapReservationType, Student } from '@/types';
 
-const libraries: ('places')[] = ['places'];
+// Google Maps libraries to load - 'places' is needed for Autocomplete
+const libraries: ('places' | 'geometry')[] = ['places', 'geometry'];
 
+// Map container styling - defines the size and appearance of the map
 const mapContainerStyle = {
   width: '100%',
   height: '500px',
   borderRadius: '16px',
 };
 
+// Default map center - Windsor, Ontario coordinates
 const center = {
   lat: 42.3149,
-  lng: -83.0364, // Windsor, Ontario
+  lng: -83.0364,
 };
 
+/**
+ * Props interface for MapReservation component
+ */
 interface MapReservationProps {
-  eventId: string;
-  studentId: string;
-  studentName: string;
-  onComplete: () => void;
-  isTeacher?: boolean;
+  eventId: string;           // The event ID for which streets are being reserved
+  studentId: string;          // The ID of the student making the reservation
+  studentName: string;       // The name of the student making the reservation
+  onComplete: () => void;   // Callback function called when reservation is completed
+  isTeacher?: boolean;       // Whether the user is a teacher (affects some UI elements)
 }
 
+/**
+ * Interface for street path data with geometry
+ */
+interface StreetPath {
+  path: google.maps.LatLngLiteral[];  // Array of coordinates forming the street path
+  name: string;                        // Street name
+  reservationId: string;               // Associated reservation ID
+  studentName: string;                 // Name of student who reserved this street
+}
+
+/**
+ * Main MapReservation Component
+ * 
+ * This is the primary component that handles street reservations on the map.
+ * It manages state for reservations, selected places, and group collections.
+ */
 const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher = false }: MapReservationProps) => {
+  // Load Google Maps API with required libraries
   const { isLoaded } = useJsApiLoader({
     id: 'google-map-script',
     googleMapsApiKey: GOOGLE_MAPS_API_KEY,
     libraries,
   });
 
-  const [map, setMap] = useState<google.maps.Map | null>(null);
-  const [reservations, setReservations] = useState<MapReservationType[]>([]);
-  const [myReservations, setMyReservations] = useState<string[]>([]);
-  const [selectedPlace, setSelectedPlace] = useState<{ lat: number; lng: number; name: string } | null>(null);
-  const [showInfo, setShowInfo] = useState(false);
-  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
+  // Core state management
+  const [map, setMap] = useState<google.maps.Map | null>(null);  // Google Maps instance
+  const [reservations, setReservations] = useState<MapReservationType[]>([]);  // All reservations
+  const [myReservations, setMyReservations] = useState<string[]>([]);  // Current user's reserved streets
+  const [selectedPlace, setSelectedPlace] = useState<{ lat: number; lng: number; name: string } | null>(null);  // Currently selected place
+  const [showInfo, setShowInfo] = useState(false);  // Whether to show info window
+  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);  // Reference to autocomplete input
   
-  // Group collection state
-  const [students, setStudents] = useState<Student[]>([]);
-  const [groupStudents, setGroupStudents] = useState<Student[]>([]);
-  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
-  const [showGroupCollection, setShowGroupCollection] = useState(false);
+  // Group collection state - allows students to form groups for collecting
+  const [students, setStudents] = useState<Student[]>([]);  // All available students
+  const [groupStudents, setGroupStudents] = useState<Student[]>([]);  // Students in current group
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);  // Currently selected student for group
+  const [showGroupCollection, setShowGroupCollection] = useState(false);  // Whether group collection mode is active
   
-  // Temporary street selection state
+  // Temporary street selection state - streets selected but not yet reserved
   const [tempStreets, setTempStreets] = useState<{ lat: number; lng: number; name: string }[]>([]);
-  const [isCompleting, setIsCompleting] = useState(false);
+  const [isCompleting, setIsCompleting] = useState(false);  // Whether reservation is being processed
+  
+  // Street path data for highlighting - stores geometry of reserved streets
+  const [streetPaths, setStreetPaths] = useState<StreetPath[]>([]);
+  const [hoveredStreet, setHoveredStreet] = useState<string | null>(null);  // ID of currently hovered street
+  const [hoverPosition, setHoverPosition] = useState<{ lat: number; lng: number } | null>(null);  // Mouse position for hover tooltip
 
+  /**
+   * Callback when map loads - initializes the map and loads data
+   */
   const onLoad = useCallback((map: google.maps.Map) => {
     setMap(map);
     loadReservations();
@@ -60,7 +112,9 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
     checkExistingReservation();
   }, []);
 
-  // Load students for group collection
+  /**
+   * Load all students from the API for group collection feature
+   */
   const loadStudents = async () => {
     try {
       const response = await api.get(API_ENDPOINTS.EVENTS.STUDENTS(eventId));
@@ -70,43 +124,181 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
     }
   };
 
+  /**
+   * Callback when map unmounts - cleans up map instance
+   */
   const onUnmount = useCallback(() => {
     setMap(null);
   }, []);
 
+  /**
+   * Load all reservations from the API and process street paths
+   */
   const loadReservations = async () => {
     try {
       const response = await api.get(API_ENDPOINTS.EVENTS.MAP_RESERVATIONS(eventId));
       console.log('Loaded reservations:', response.data);
       setReservations(response.data);
+      
+      // Process reservations to create street paths for highlighting
+      await processStreetPaths(response.data);
     } catch (error) {
       console.error('Failed to load reservations:', error);
     }
   };
 
+  /**
+   * Process reservations to create street paths using Google Maps Geocoding API
+   * This function converts street names into actual path coordinates for highlighting
+   * Uses Geocoding API to get street bounds and creates visible path segments
+   */
+  const processStreetPaths = async (reservations: MapReservationType[]) => {
+    if (!isLoaded || !map) return;
+    
+    const paths: StreetPath[] = [];
+    
+    for (const reservation of reservations) {
+      const r: any = reservation;
+      const pos = getLatLng(r);
+      if (!pos) continue;
+      
+      try {
+        // Get street name from reservation
+        const streetName = r.street_name || r.streetName || '';
+        if (!streetName) continue;
+        
+        // Use Geocoding API to get street geometry
+        const geocoder = new google.maps.Geocoder();
+        const result = await new Promise<google.maps.GeocoderResult[]>((resolve, reject) => {
+          geocoder.geocode(
+            { address: `${streetName}, Windsor, ON, Canada` },
+            (results, status) => {
+              if (status === 'OK' && results) {
+                resolve(results);
+              } else {
+                // If geocoding fails, resolve with empty array (we'll use fallback)
+                resolve([]);
+              }
+            }
+          );
+        });
+        
+        let path: google.maps.LatLngLiteral[] = [];
+        
+        if (result && result.length > 0) {
+          const geometry = result[0].geometry;
+          
+          // Create path from geometry bounds or viewport
+          if (geometry.viewport) {
+            // Use viewport to create a path along the street
+            const bounds = geometry.viewport;
+            const ne = bounds.getNorthEast();
+            const sw = bounds.getSouthWest();
+            
+            // Create a path that represents the street (horizontal or vertical line)
+            // Determine if street is more horizontal or vertical
+            const latDiff = ne.lat() - sw.lat();
+            const lngDiff = ne.lng() - sw.lng();
+            
+            if (Math.abs(lngDiff) > Math.abs(latDiff)) {
+              // More horizontal street - create horizontal path
+              const midLat = (ne.lat() + sw.lat()) / 2;
+              path = [
+                { lat: midLat, lng: sw.lng() },
+                { lat: midLat, lng: ne.lng() },
+              ];
+            } else {
+              // More vertical street - create vertical path
+              const midLng = (ne.lng() + sw.lng()) / 2;
+              path = [
+                { lat: sw.lat(), lng: midLng },
+                { lat: ne.lat(), lng: midLng },
+              ];
+            }
+          } else if (geometry.bounds) {
+            // Use bounds if viewport not available
+            const bounds = geometry.bounds;
+            const ne = bounds.getNorthEast();
+            const sw = bounds.getSouthWest();
+            const midLat = (ne.lat() + sw.lat()) / 2;
+            const midLng = (ne.lng() + sw.lng()) / 2;
+            
+            // Create a cross pattern to highlight the area
+            path = [
+              { lat: midLat, lng: sw.lng() },
+              { lat: midLat, lng: ne.lng() },
+              { lat: sw.lat(), lng: midLng },
+              { lat: ne.lat(), lng: midLng },
+            ];
+          } else {
+            // Use location point to create a small visible path
+            const center = geometry.location;
+            const radius = 0.002; // ~200 meters
+            path = [
+              { lat: center.lat() - radius, lng: center.lng() - radius },
+              { lat: center.lat() + radius, lng: center.lng() + radius },
+            ];
+          }
+        }
+        
+        // Fallback: if no path created, use coordinates to create a visible segment
+        if (path.length === 0) {
+          const radius = 0.002; // ~200 meters
+          path = [
+            { lat: pos.lat - radius, lng: pos.lng - radius },
+            { lat: pos.lat + radius, lng: pos.lng + radius },
+          ];
+        }
+        
+        paths.push({
+          path,
+          name: streetName,
+          reservationId: r.id || `${r.street_name}-${pos.lat}-${pos.lng}`,
+          studentName: r.studentName || r.name || 'Unknown',
+        });
+      } catch (error) {
+        console.error(`Error processing street path for ${r.street_name}:`, error);
+        // Fallback: create a simple path from coordinates
+        const radius = 0.002; // ~200 meters
+        paths.push({
+          path: [
+            { lat: pos.lat - radius, lng: pos.lng - radius },
+            { lat: pos.lat + radius, lng: pos.lng + radius },
+          ],
+          name: streetName,
+          reservationId: r.id || `${r.street_name}-${pos.lat}-${pos.lng}`,
+          studentName: r.studentName || r.name || 'Unknown',
+        });
+      }
+    }
+    
+    setStreetPaths(paths);
+  };
+
+  /**
+   * Check if the current user already has an existing reservation
+   * If so, load it into the temporary selection state
+   */
   const checkExistingReservation = async () => {
     try {
       const response = await api.get(API_ENDPOINTS.EVENTS.MAP_RESERVATIONS(eventId));
       const existingReservations = response.data;
       
-      // Check if this student/teacher already has a reservation
+      // Find reservation for current user
       const existingReservation = existingReservations.find((res: any) => 
         res.studentName === studentName || res.name === studentName
       );
       
       if (existingReservation) {
-        // Load existing streets into temporary selection
-        // Don't split by comma - treat the entire street_name as one street
+        // Parse coordinates from geojson
         let lat = 42.3149, lng = -83.0364; // Default Windsor coordinates
         try {
           if (existingReservation.geojson) {
             const geojsonData = JSON.parse(existingReservation.geojson);
             if (Array.isArray(geojsonData) && geojsonData.length > 0) {
-              // Use the first street's coordinates
               lat = geojsonData[0].lat || lat;
               lng = geojsonData[0].lng || lng;
             } else if (geojsonData.lat && geojsonData.lng) {
-              // Single street object
               lat = geojsonData.lat;
               lng = geojsonData.lng;
             }
@@ -115,7 +307,7 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
           console.error('Error parsing geojson:', e);
         }
         
-        // Treat the entire street_name as one street
+        // Load existing street into temporary selection
         const existingStreet = { 
           lat, 
           lng, 
@@ -132,8 +324,10 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
     }
   };
 
-  // Removed map clicking functionality - text input only
-
+  /**
+   * Handle place selection from Autocomplete
+   * When a user selects a place, show info window and pan map to it
+   */
   const handlePlaceSelect = () => {
     if (!autocompleteRef.current) return;
     
@@ -147,10 +341,15 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
     });
     setShowInfo(true);
     
+    // Pan map to selected location
     map?.panTo(place.geometry.location);
     map?.setZoom(16);
   };
 
+  /**
+   * Handle street reservation
+   * Adds selected street to temporary selection if not already reserved
+   */
   const handleReserve = () => {
     console.log('handleReserve called', { selectedPlace, studentName });
     
@@ -159,56 +358,44 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
       return;
     }
 
-    // Check if this street is already reserved by someone else
+    // Check if street is already reserved by someone else
     const isAlreadyReserved = reservations.some(r => {
       const reservedBy = r.studentName || r.name || '';
       const currentUser = studentName;
       const streetMatch = r.street_name && r.street_name.includes(selectedPlace.name);
       const differentUser = reservedBy.toLowerCase() !== currentUser.toLowerCase();
       
-      console.log('Checking reservation:', { 
-        street: r.street_name, 
-        reservedBy, 
-        currentUser, 
-        streetMatch, 
-        differentUser,
-        isReserved: streetMatch && differentUser
-      });
-      
       return streetMatch && differentUser;
     });
 
     if (isAlreadyReserved) {
-      console.log('Street already reserved');
       toast.error(`${selectedPlace.name} is already reserved by someone else!`);
       setShowInfo(false);
       setSelectedPlace(null);
       return;
     }
 
-    // Add to temporary streets instead of immediately reserving
-    console.log('Adding to temp streets:', selectedPlace);
-    setTempStreets(prev => {
-      const newStreets = [...prev, selectedPlace];
-      console.log('New temp streets:', newStreets);
-      return newStreets;
-    });
-    setMyReservations(prev => {
-      const newReservations = [...prev, selectedPlace.name];
-      console.log('New my reservations:', newReservations);
-      return newReservations;
-    });
+    // Add to temporary streets selection
+    setTempStreets(prev => [...prev, selectedPlace]);
+    setMyReservations(prev => [...prev, selectedPlace.name]);
     setShowInfo(false);
     setSelectedPlace(null);
     toast.success(`${selectedPlace.name} added to your selection!`);
   };
 
+  /**
+   * Remove a street from temporary selection
+   */
   const handleRemoveReservation = (streetName: string) => {
     setMyReservations(myReservations.filter(street => street !== streetName));
     setTempStreets(tempStreets.filter(street => street.name !== streetName));
     toast.success(`${streetName} removed from your selection`);
   };
 
+  /**
+   * Complete the registration process
+   * Saves all selected streets as a reservation
+   */
   const handleCompleteRegistration = async () => {
     if (tempStreets.length === 0) {
       toast.error('Please select at least one street before completing registration');
@@ -238,12 +425,11 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
           geojson: JSON.stringify(geojsonData),
         };
         
-        // For teachers, don't send student_id
         if (!isTeacher) {
           payload.student_id = Number(studentId);
         }
         
-        // Delete old reservation and create new one
+        // Delete old and create new reservation
         await api.delete(`${API_ENDPOINTS.EVENTS.MAP_RESERVATIONS(eventId)}/${existingReservation.id}`);
         const response = await api.post(API_ENDPOINTS.EVENTS.MAP_RESERVATIONS(eventId), payload);
 
@@ -269,7 +455,6 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
           geojson: JSON.stringify(geojsonData),
         };
         
-        // For teachers, don't send student_id
         if (!isTeacher) {
           payload.student_id = Number(studentId);
         }
@@ -290,7 +475,7 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
       setGroupStudents([]);
       setShowGroupCollection(false);
       
-      // Reload reservations to show the updated reservation
+      // Reload reservations to show updated data
       loadReservations();
       
       onComplete();
@@ -306,7 +491,9 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
     }
   };
 
-  // Group collection functions
+  /**
+   * Add a student to the group collection
+   */
   const addStudentToGroup = () => {
     if (selectedStudent && !groupStudents.find(s => s.id === selectedStudent.id)) {
       // Prevent adding yourself as a group member
@@ -326,15 +513,18 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
     }
   };
 
+  /**
+   * Remove a student from the group
+   */
   const removeStudentFromGroup = (studentId: string) => {
     setGroupStudents(prev => prev.filter(s => s.id !== studentId));
   };
 
+  /**
+   * Handle group reservation
+   */
   const handleGroupReserve = async () => {
-    console.log('handleGroupReserve called', { selectedPlace, groupStudents, studentName });
-    
     if (!selectedPlace || groupStudents.length === 0) {
-      console.log('Missing required data for group reserve');
       return;
     }
 
@@ -351,14 +541,11 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
         }),
       };
       
-      // For teachers, don't send student_id
       if (!isTeacher) {
         payload.student_id = studentId;
       }
       
-      console.log('Sending group reservation payload:', payload);
       const response = await api.post(API_ENDPOINTS.EVENTS.MAP_RESERVATIONS(eventId), payload);
-      console.log('Group reservation response:', response.data);
 
       if (response.data) {
         setMyReservations(prev => [...prev, selectedPlace.name]);
@@ -374,6 +561,7 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
     }
   };
 
+  // Show loading spinner while Google Maps API loads
   if (!isLoaded) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 500 }}>
@@ -382,6 +570,9 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
     );
   }
 
+  /**
+   * Get initials from a full name (e.g., "John Doe" -> "JD")
+   */
   const getInitials = (name: string) => {
     return (name || '')
       .split(' ')
@@ -391,11 +582,17 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
       .slice(0, 2);
   };
 
+  /**
+   * Extract latitude and longitude from a reservation object
+   * Handles multiple data formats (geojson, direct lat/lng, etc.)
+   */
   const getLatLng = (r: any): { lat: number; lng: number } | null => {
+    // Try direct latitude/longitude fields first
     const lat = r?.latitude;
     const lng = r?.longitude;
     if (typeof lat === 'number' && typeof lng === 'number') return { lat, lng };
     
+    // Try parsing geojson
     try {
       const gj = r?.geojson ? JSON.parse(r.geojson) : {};
       // Handle array of coordinates (multiple streets)
@@ -415,14 +612,30 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
     } catch (error) {
       console.error('Error parsing geojson:', error, r?.geojson);
     }
-    // Don't use default coordinates - return null if no coordinates found
-    // This prevents all streets from appearing at the same location
+    
+    // Return null if no coordinates found (prevents all streets appearing at same location)
     return null;
+  };
+
+  /**
+   * Handle mouse enter on a street path - show hover tooltip
+   */
+  const handleStreetMouseEnter = (reservationId: string, position: { lat: number; lng: number }) => {
+    setHoveredStreet(reservationId);
+    setHoverPosition(position);
+  };
+
+  /**
+   * Handle mouse leave on a street path - hide hover tooltip
+   */
+  const handleStreetMouseLeave = () => {
+    setHoveredStreet(null);
+    setHoverPosition(null);
   };
 
   return (
     <Box>
-      {/* Clear Instructions */}
+      {/* Instructions Panel */}
       <Paper elevation={1} sx={{ p: 3, mb: 3, bgcolor: 'info.light', borderRadius: 2 }}>
         <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, color: 'info.dark' }}>
           📍 Street Reservation Instructions
@@ -438,7 +651,10 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
             <strong>If you already have a reservation</strong>, you can edit it by adding or removing streets
           </Typography>
           <Typography component="li" variant="body2" sx={{ mb: 1, fontWeight: 600 }}>
-            <strong>Red pins on the map</strong> show streets already reserved by other students
+            <strong>Highlighted streets on the map</strong> show streets already reserved by other students
+          </Typography>
+          <Typography component="li" variant="body2" sx={{ mb: 1, fontWeight: 600 }}>
+            <strong>Hover over highlighted streets</strong> to see which student reserved them
           </Typography>
           <Typography component="li" variant="body2" sx={{ mb: 1, fontWeight: 600 }}>
             <strong>For group members:</strong> Only add your friends' names, NOT your own name
@@ -449,7 +665,7 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
         </Box>
       </Paper>
 
-      {/* Search */}
+      {/* Street Search Autocomplete */}
       <Autocomplete
         onLoad={(autocomplete) => (autocompleteRef.current = autocomplete)}
         onPlaceChanged={handlePlaceSelect}
@@ -464,72 +680,111 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
         />
       </Autocomplete>
 
-      {/* Map */}
+      {/* Google Map Component */}
       <GoogleMap
         mapContainerStyle={mapContainerStyle}
         center={center}
         zoom={13}
         onLoad={onLoad}
         onUnmount={onUnmount}
-        // onClick={handleMapClick} // Removed clicking functionality
         options={{
           streetViewControl: false,
           mapTypeControl: false,
         }}
       >
-        {/* Existing reservations with highlighting */}
-        {isLoaded && reservations.map((reservation) => {
-          const r: any = reservation;
-          const pos = getLatLng(r);
-          if (!pos) {
-            return null;
-          }
-          const key = r.id || `${r.street_name || r.streetName}-${pos.lat}-${pos.lng}`;
+        {/* Street Path Highlights - Draw actual street paths using Polylines */}
+        {isLoaded && streetPaths.map((streetPath) => {
+          const reservation = reservations.find((r: any) => 
+            (r.id || `${r.street_name}-${getLatLng(r)?.lat}-${getLatLng(r)?.lng}`) === streetPath.reservationId
+          );
+          
+          if (!reservation) return null;
+          
+          const pos = getLatLng(reservation as any);
+          if (!pos) return null;
+          
+          const isHovered = hoveredStreet === streetPath.reservationId;
+          
           return (
-            <React.Fragment key={key}>
-              {/* Highlight circle around reserved street */}
+            <React.Fragment key={streetPath.reservationId}>
+              {/* Polyline highlighting the actual street path */}
+              <Polyline
+                path={streetPath.path}
+                options={{
+                  strokeColor: isHovered ? '#2563eb' : '#3b82f6',
+                  strokeOpacity: isHovered ? 0.9 : 0.6,
+                  strokeWeight: isHovered ? 6 : 4,
+                  zIndex: isHovered ? 3 : 2,
+                  clickable: true,
+                  cursor: 'pointer',
+                }}
+                onMouseOver={() => handleStreetMouseEnter(streetPath.reservationId, pos)}
+                onMouseOut={handleStreetMouseLeave}
+              />
+              
+              {/* Circle highlight around the street for better visibility */}
               {map && (
                 <Circle
                   center={pos}
-                  radius={500} // 500 meters radius - more visible highlight
+                  radius={300}
                   options={{
-                    fillColor: '#3b82f6', // Blue color
-                    fillOpacity: 0.25,
-                    strokeColor: '#2563eb',
-                    strokeOpacity: 0.8,
-                    strokeWeight: 4,
+                    fillColor: isHovered ? '#2563eb' : '#3b82f6',
+                    fillOpacity: isHovered ? 0.3 : 0.2,
+                    strokeColor: isHovered ? '#1e40af' : '#2563eb',
+                    strokeOpacity: isHovered ? 0.9 : 0.7,
+                    strokeWeight: isHovered ? 5 : 3,
                     clickable: false,
                     zIndex: 1,
                   }}
                 />
               )}
-              {/* Marker for reserved street */}
+              
+              {/* Marker showing student initials */}
               <Marker
                 position={pos}
                 label={{
-                  text: getInitials(r.studentName || r.name || ''),
+                  text: getInitials(streetPath.studentName),
                   color: 'white',
                   fontWeight: 'bold',
                 }}
                 icon={{
                   url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
                     <svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
-                      <circle cx="20" cy="20" r="18" fill="#3b82f6" stroke="white" stroke-width="3"/>
+                      <circle cx="20" cy="20" r="18" fill="${isHovered ? '#2563eb' : '#3b82f6'}" stroke="white" stroke-width="3"/>
                       <text x="20" y="26" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" font-weight="bold" fill="white">
-                        ${getInitials(r.studentName || r.name || '')}
+                        ${getInitials(streetPath.studentName)}
                       </text>
                     </svg>
                   `),
                   scaledSize: new google.maps.Size(40, 40),
                   anchor: new google.maps.Point(20, 20),
                 }}
-                zIndex={2}
+                zIndex={4}
+                onMouseOver={() => handleStreetMouseEnter(streetPath.reservationId, pos)}
+                onMouseOut={handleStreetMouseLeave}
               />
             </React.Fragment>
           );
         })}
 
-        {/* Selected place */}
+        {/* Hover Tooltip - Shows student name when hovering over a street */}
+        {hoveredStreet && hoverPosition && (
+          <InfoWindow
+            position={hoverPosition}
+            onCloseClick={handleStreetMouseLeave}
+          >
+            <Box sx={{ p: 1 }}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#2563eb' }}>
+                {streetPaths.find(sp => sp.reservationId === hoveredStreet)?.name || 'Street'}
+              </Typography>
+              <Typography variant="body2" sx={{ mt: 0.5, color: '#666' }}>
+                Reserved by: <strong>{streetPaths.find(sp => sp.reservationId === hoveredStreet)?.studentName || 'Unknown'}</strong>
+              </Typography>
+            </Box>
+          </InfoWindow>
+        )}
+
+        {/* Selected Place Info Window */}
         {selectedPlace && showInfo && (
           <InfoWindow
             position={{ lat: selectedPlace.lat, lng: selectedPlace.lng }}
@@ -540,7 +795,7 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
                 {selectedPlace.name}
               </Typography>
               
-              {/* Show all students who reserved this street */}
+              {/* Show existing reservations for this street */}
               {(() => {
                 const streetReservations = reservations.filter(r => r.street_name === selectedPlace.name);
                 if (streetReservations.length > 0) {
@@ -582,9 +837,9 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
                 </Box>
               )}
 
+              {/* Group Collection UI */}
               {!isTeacher && showGroupCollection ? (
                 <Box>
-                  {/* Student Selection */}
                   <MuiAutocomplete
                     options={students}
                     getOptionLabel={(option) => `${option.first_name} ${option.last_name}`}
@@ -601,7 +856,6 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
                     )}
                   />
                   
-                  {/* Add Student Button */}
                   <Button
                     fullWidth
                     variant="outlined"
@@ -614,7 +868,6 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
                     Add Student
                   </Button>
 
-                  {/* Group Members */}
                   {groupStudents.length > 0 && (
                     <Box sx={{ mb: 2 }}>
                       <Typography variant="caption" sx={{ fontWeight: 600, mb: 1, display: 'block' }}>
@@ -634,7 +887,6 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
                     </Box>
                   )}
 
-                  {/* Group Reserve Button */}
                   <Button
                     fullWidth
                     variant="contained"
@@ -647,22 +899,22 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
                   </Button>
                 </Box>
               ) : (
-              <Button
-                fullWidth
-                variant="contained"
-                size="small"
-                onClick={handleReserve}
-                sx={{ background: 'linear-gradient(135deg, hsl(142, 76%, 36%) 0%, hsl(142, 76%, 46%) 100%)' }}
-              >
-                Reserve This Street
-              </Button>
+                <Button
+                  fullWidth
+                  variant="contained"
+                  size="small"
+                  onClick={handleReserve}
+                  sx={{ background: 'linear-gradient(135deg, hsl(142, 76%, 36%) 0%, hsl(142, 76%, 46%) 100%)' }}
+                >
+                  Reserve This Street
+                </Button>
               )}
             </Paper>
           </InfoWindow>
         )}
       </GoogleMap>
 
-      {/* My Reservations */}
+      {/* My Reservations Panel */}
       <AnimatePresence>
         {myReservations.length > 0 && (
           <motion.div

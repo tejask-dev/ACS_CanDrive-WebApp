@@ -1,9 +1,37 @@
+"""
+ACS Can Drive Backend API
+==========================
+
+This is the main FastAPI application for the ACS Can Drive web application.
+It provides RESTful API endpoints for managing can drive events, students, 
+donations, leaderboards, and street reservations.
+
+Key Features:
+- Student and teacher management
+- Donation tracking and processing
+- Real-time leaderboard calculations
+- Street reservation system with Google Maps integration
+- Admin authentication and authorization
+- CSV import/export functionality
+- Daily leaderboard reset functionality
+
+Architecture:
+- FastAPI framework for REST API
+- SQLAlchemy ORM for database operations
+- SQLite database for data persistence
+- JWT-based authentication for admin access
+
+Author: ACS Can Drive Development Team
+Created: 2025
+"""
+
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from database import init_db, get_db
 from routers import admin, events, students, donations, map_reservations
 import os
 
+# Initialize FastAPI application
 app = FastAPI()
 
 app.add_middleware(
@@ -493,16 +521,35 @@ def test_leaderboard():
 
 @app.get("/api/events/1/leaderboard")
 def get_leaderboard():
-    """Get leaderboard data for event 1"""
+    """
+    Get comprehensive leaderboard data for event 1
+    
+    This endpoint calculates and returns leaderboard data including:
+    - Top 50 students ranked by total cans collected
+    - Top 50 teachers ranked by total cans collected
+    - Top 50 classes (homerooms) ranked by combined student + teacher cans
+    - Top 50 grades ranked by total cans from students in that grade
+    - Class buyout eligibility data (classes that have collected 10x their student count)
+    - Total cans collected across the entire event
+    
+    The leaderboard uses a dual calculation method:
+    1. Sums all donations from the Donation table (source of truth)
+    2. Sums all total_cans fields from Student and Teacher tables (respects manual edits)
+    3. Uses the maximum of both to ensure accuracy
+    
+    Returns:
+        dict: JSON object containing all leaderboard categories and totals
+    """
     from models import Student, Teacher, Donation
     from collections import defaultdict
     from sqlalchemy import text
     
     try:
-        # Get database connection with retry
+        # Get database connection - using simple connection for SQLite
         db = get_db_simple()
         
-        # Get all students and teachers for event 1
+        # Query all students and teachers for event 1
+        # These are the primary data sources for leaderboard calculations
         students = db.query(Student).filter(Student.event_id == 1).all()
         teachers = db.query(Teacher).filter(Teacher.event_id == 1).all()
         
@@ -515,18 +562,21 @@ def get_leaderboard():
                 "totalCans": 0
             }
         
-        # Calculate total cans from donations table (source of truth)
-        # This ensures accuracy even if total_cans fields have inconsistencies
+        # Calculate total cans using dual method for accuracy
+        # Method 1: Sum all donations from Donation table (source of truth for transactions)
         donations = db.query(Donation).filter(Donation.event_id == 1).all()
         total_cans_from_donations = sum(donation.amount or 0 for donation in donations)
         
-        # Also calculate from total_cans fields (respects manual edits)
+        # Method 2: Sum total_cans fields from Student and Teacher tables
+        # This respects manual edits made by admins in the admin panel
         student_cans = sum(student.total_cans or 0 for student in students)
         teacher_cans = sum(teacher.total_cans or 0 for teacher in teachers)
         total_cans_from_fields = student_cans + teacher_cans
         
-        # Use the higher value to account for both donations and manual edits
-        # This ensures we capture all cans whether from donations or manual entry
+        # Use the maximum of both methods to ensure we capture all cans
+        # This handles cases where:
+        # - Donations were recorded but not yet reflected in total_cans fields
+        # - Manual edits were made to total_cans fields
         total_cans = max(total_cans_from_donations, total_cans_from_fields)
         
         # Top Students - sort by total_cans descending
