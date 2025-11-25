@@ -680,10 +680,26 @@ def get_leaderboard():
                 class_key = f"{student.homeroom_teacher} {student.homeroom_number}".strip()
                 class_student_counts[class_key] += 1
                 class_can_totals[class_key] += student.total_cans or 0
-                print(f"DEBUG: Class {class_key} - Student: {student.first_name} {student.last_name}, Cans: {student.total_cans or 0}")
         
-        print(f"DEBUG: Class totals: {dict(class_can_totals)}")
-        print("DEBUG: Daily leaderboard reset triggered - backend redeployed")
+        # Add teacher contributions to class buyout totals
+        # This ensures consistency with the main Top Classes leaderboard
+        for teacher in teachers:
+            if teacher.homeroom_number:
+                teacher_name = teacher.full_name or f"{teacher.first_name} {teacher.last_name}".strip()
+                room = teacher.homeroom_number
+                
+                # Try to find existing class key to add to
+                found_match = False
+                for class_key in class_can_totals.keys():
+                    # Match if room number is in the class key
+                    if room in class_key:
+                        class_can_totals[class_key] += teacher.total_cans or 0
+                        found_match = True
+                        break
+                
+                # If no match found (e.g. class has no students but has a teacher?), 
+                # we generally don't create a new buyout entry since student_count would be 0
+                # and thus filtered out later anyway.
         
         # Calculate buyout eligibility
         for class_name, student_count in class_student_counts.items():

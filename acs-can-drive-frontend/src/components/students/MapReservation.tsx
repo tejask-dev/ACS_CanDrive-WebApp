@@ -83,7 +83,7 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
   const [map, setMap] = useState<google.maps.Map | null>(null);  // Google Maps instance
   const [reservations, setReservations] = useState<MapReservationType[]>([]);  // All reservations
   const [myReservations, setMyReservations] = useState<string[]>([]);  // Current user's reserved streets
-  const [selectedPlace, setSelectedPlace] = useState<{ lat: number; lng: number; name: string } | null>(null);  // Currently selected place
+  const [selectedPlace, setSelectedPlace] = useState<{ lat: number; lng: number; name: string; path?: google.maps.LatLngLiteral[] } | null>(null);  // Currently selected place
   const [showInfo, setShowInfo] = useState(false);  // Whether to show info window
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);  // Reference to autocomplete input
   
@@ -94,7 +94,7 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
   const [showGroupCollection, setShowGroupCollection] = useState(false);  // Whether group collection mode is active
   
   // Temporary street selection state - streets selected but not yet reserved
-  const [tempStreets, setTempStreets] = useState<{ lat: number; lng: number; name: string }[]>([]);
+  const [tempStreets, setTempStreets] = useState<{ lat: number; lng: number; name: string; path?: google.maps.LatLngLiteral[] }[]>([]);
   const [isCompleting, setIsCompleting] = useState(false);  // Whether reservation is being processed
   
   // Street path data for highlighting - stores geometry of reserved streets
@@ -148,9 +148,64 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
   };
 
   /**
-   * Process reservations to create street paths using Google Maps Geocoding API
-   * This function converts street names into actual path coordinates for highlighting
-   * Uses Geocoding API to get street bounds and creates visible path segments
+   * Generate a visible street path from Google Maps geometry
+   * This helper function creates a Polyline path based on viewport bounds or location
+   */
+  const generateStreetPath = (geometry: google.maps.places.PlaceGeometry): google.maps.LatLngLiteral[] => {
+    if (geometry.viewport) {
+      // Use viewport to create a path along the street
+      const bounds = geometry.viewport;
+      const ne = bounds.getNorthEast();
+      const sw = bounds.getSouthWest();
+      
+      // Determine if street is more horizontal or vertical based on bounds
+      const latDiff = ne.lat() - sw.lat();
+      const lngDiff = ne.lng() - sw.lng();
+      
+      if (Math.abs(lngDiff) > Math.abs(latDiff)) {
+        // Horizontal street
+        const midLat = (ne.lat() + sw.lat()) / 2;
+        return [
+          { lat: midLat, lng: sw.lng() },
+          { lat: midLat, lng: ne.lng() },
+        ];
+      } else {
+        // Vertical street
+        const midLng = (ne.lng() + sw.lng()) / 2;
+        return [
+          { lat: sw.lat(), lng: midLng },
+          { lat: ne.lat(), lng: midLng },
+        ];
+      }
+    } else if (geometry.bounds) {
+      // Use bounds cross pattern if viewport not available
+      const bounds = geometry.bounds;
+      const ne = bounds.getNorthEast();
+      const sw = bounds.getSouthWest();
+      const midLat = (ne.lat() + sw.lat()) / 2;
+      const midLng = (ne.lng() + sw.lng()) / 2;
+      
+      return [
+        { lat: midLat, lng: sw.lng() },
+        { lat: midLat, lng: ne.lng() },
+        { lat: sw.lat(), lng: midLng },
+        { lat: ne.lat(), lng: midLng },
+      ];
+    } else if (geometry.location) {
+      // Fallback to small segment around location
+      const center = geometry.location;
+      const radius = 0.002; // ~200 meters
+      return [
+        { lat: center.lat() - radius, lng: center.lng() - radius },
+        { lat: center.lat() + radius, lng: center.lng() + radius },
+      ];
+    }
+    return [];
+  };
+
+  /**
+   * Process reservations to create street paths for highlighting
+   * checks for cached path data in geojson first, falls back to live geocoding
    */
   const processStreetPaths = async (reservations: MapReservationType[]) => {
     if (!isLoaded || !map) return;
@@ -161,115 +216,67 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
       const r: any = reservation;
       const pos = getLatLng(r);
       if (!pos) continue;
-      
+
+      let path: google.maps.LatLngLiteral[] = [];
+
+      // 1. Try to get path from cached geojson
       try {
-        // Get street name from reservation
-        const streetName = r.street_name || r.streetName || '';
-        if (!streetName) continue;
-        
-        // Use Geocoding API to get street geometry
-        const geocoder = new google.maps.Geocoder();
-        const result = await new Promise<google.maps.GeocoderResult[]>((resolve, reject) => {
-          geocoder.geocode(
-            { address: `${streetName}, Windsor, ON, Canada` },
-            (results, status) => {
-              if (status === 'OK' && results) {
-                resolve(results);
-              } else {
-                // If geocoding fails, resolve with empty array (we'll use fallback)
-                resolve([]);
-              }
-            }
-          );
-        });
-        
-        let path: google.maps.LatLngLiteral[] = [];
-        
-        if (result && result.length > 0) {
-          const geometry = result[0].geometry;
+        if (r.geojson) {
+          const geoData = JSON.parse(r.geojson);
+          // Check if geojson contains path data (array of points)
+          // New format: { lat, lng, name, path: [...] }
+          // Or array of streets: [{ lat, lng, name, path: [...] }]
           
-          // Create path from geometry bounds or viewport
-          if (geometry.viewport) {
-            // Use viewport to create a path along the street
-            const bounds = geometry.viewport;
-            const ne = bounds.getNorthEast();
-            const sw = bounds.getSouthWest();
-            
-            // Create a path that represents the street (horizontal or vertical line)
-            // Determine if street is more horizontal or vertical
-            const latDiff = ne.lat() - sw.lat();
-            const lngDiff = ne.lng() - sw.lng();
-            
-            if (Math.abs(lngDiff) > Math.abs(latDiff)) {
-              // More horizontal street - create horizontal path
-              const midLat = (ne.lat() + sw.lat()) / 2;
-              path = [
-                { lat: midLat, lng: sw.lng() },
-                { lat: midLat, lng: ne.lng() },
-              ];
-            } else {
-              // More vertical street - create vertical path
-              const midLng = (ne.lng() + sw.lng()) / 2;
-              path = [
-                { lat: sw.lat(), lng: midLng },
-                { lat: ne.lat(), lng: midLng },
-              ];
-            }
-          } else if (geometry.bounds) {
-            // Use bounds if viewport not available
-            const bounds = geometry.bounds;
-            const ne = bounds.getNorthEast();
-            const sw = bounds.getSouthWest();
-            const midLat = (ne.lat() + sw.lat()) / 2;
-            const midLng = (ne.lng() + sw.lng()) / 2;
-            
-            // Create a cross pattern to highlight the area
-            path = [
-              { lat: midLat, lng: sw.lng() },
-              { lat: midLat, lng: ne.lng() },
-              { lat: sw.lat(), lng: midLng },
-              { lat: ne.lat(), lng: midLng },
-            ];
-          } else {
-            // Use location point to create a small visible path
-            const center = geometry.location;
-            const radius = 0.002; // ~200 meters
-            path = [
-              { lat: center.lat() - radius, lng: center.lng() - radius },
-              { lat: center.lat() + radius, lng: center.lng() + radius },
-            ];
+          if (Array.isArray(geoData) && geoData.length > 0 && geoData[0].path) {
+            path = geoData[0].path;
+          } else if (geoData.path) {
+            path = geoData.path;
           }
         }
-        
-        // Fallback: if no path created, use coordinates to create a visible segment
-        if (path.length === 0) {
-          const radius = 0.002; // ~200 meters
-          path = [
-            { lat: pos.lat - radius, lng: pos.lng - radius },
-            { lat: pos.lat + radius, lng: pos.lng + radius },
-          ];
-        }
-        
-        paths.push({
-          path,
-          name: streetName,
-          reservationId: r.id || `${r.street_name}-${pos.lat}-${pos.lng}`,
-          studentName: r.studentName || r.name || 'Unknown',
-        });
-      } catch (error) {
-        console.error(`Error processing street path for ${r.street_name}:`, error);
-        // Fallback: create a simple path from coordinates
-        const radius = 0.002; // ~200 meters
-        paths.push({
-          path: [
-            { lat: pos.lat - radius, lng: pos.lng - radius },
-            { lat: pos.lat + radius, lng: pos.lng + radius },
-          ],
-          name: streetName,
-          reservationId: r.id || `${r.street_name}-${pos.lat}-${pos.lng}`,
-          studentName: r.studentName || r.name || 'Unknown',
-        });
+      } catch (e) {
+        console.error('Error parsing geojson path:', e);
       }
+      
+      // 2. If no cached path, fall back to live geocoding (Legacy support)
+      if (path.length === 0) {
+        try {
+          const streetName = r.street_name || r.streetName || '';
+          if (streetName) {
+            const geocoder = new google.maps.Geocoder();
+            const result = await new Promise<google.maps.GeocoderResult[]>((resolve) => {
+              geocoder.geocode(
+                { address: `${streetName}, Windsor, ON, Canada` },
+                (results, status) => {
+                  if (status === 'OK' && results) resolve(results);
+                  else resolve([]);
+                }
+              );
+            });
+            
+            if (result && result.length > 0 && result[0].geometry) {
+              path = generateStreetPath(result[0].geometry);
+            }
+          }
+        } catch (error) {
+          console.error(`Geocoding fallback failed for ${r.street_name}:`, error);
+        }
+      }
+        
+      // 3. Final fallback: create simple segment from coordinates
+      if (path.length === 0) {
+        const radius = 0.002;
+        path = [
+          { lat: pos.lat - radius, lng: pos.lng - radius },
+          { lat: pos.lat + radius, lng: pos.lng + radius },
+        ];
+      }
+        
+      paths.push({
+        path,
+        name: r.street_name || r.streetName || 'Street',
+        reservationId: r.id || `${r.street_name}-${pos.lat}-${pos.lng}`,
+        studentName: r.studentName || r.name || 'Unknown',
+      });
     }
     
     setStreetPaths(paths);
@@ -311,7 +318,8 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
         const existingStreet = { 
           lat, 
           lng, 
-          name: existingReservation.streetName.trim() 
+          name: existingReservation.streetName.trim(),
+          path: [] // Will be populated by processStreetPaths logic if needed, but for temp selection start empty
         };
         
         setTempStreets([existingStreet]);
@@ -327,6 +335,7 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
   /**
    * Handle place selection from Autocomplete
    * When a user selects a place, show info window and pan map to it
+   * Also generates the path immediately for storage
    */
   const handlePlaceSelect = () => {
     if (!autocompleteRef.current) return;
@@ -334,10 +343,14 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
     const place = autocompleteRef.current.getPlace();
     if (!place.geometry?.location) return;
 
+    // Generate path immediately from geometry
+    const path = place.geometry ? generateStreetPath(place.geometry) : [];
+
     setSelectedPlace({
       lat: place.geometry.location.lat(),
       lng: place.geometry.location.lng(),
       name: place.formatted_address || place.name || '',
+      path: path
     });
     setShowInfo(true);
     
@@ -415,7 +428,8 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
         const geojsonData = tempStreets.map(street => ({
           lat: street.lat,
           lng: street.lng,
-          name: street.name
+          name: street.name,
+          path: street.path || [] // Save the generated path
         }));
 
         const payload: any = {
@@ -445,7 +459,8 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
         const geojsonData = tempStreets.map(street => ({
           lat: street.lat,
           lng: street.lng,
-          name: street.name
+          name: street.name,
+          path: street.path || [] // Save the generated path
         }));
 
         const payload: any = {
@@ -537,7 +552,8 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
         geojson: JSON.stringify({ 
           lat: selectedPlace.lat, 
           lng: selectedPlace.lng, 
-          group: groupNames 
+          group: groupNames,
+          path: selectedPlace.path || []
         }),
       };
       
