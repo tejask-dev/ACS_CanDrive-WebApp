@@ -29,6 +29,7 @@ from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from database import init_db, get_db
 from routers import admin, events, students, donations, map_reservations
+from config import CURRENT_EVENT_ID
 import os
 
 # Initialize FastAPI application
@@ -86,26 +87,26 @@ def ensure_admin_user():
 
 ensure_admin_user()
 
-# Ensure event 1 exists on startup
+# Ensure event exists on startup
 def ensure_event():
     from database import SessionLocal
     from models import Event
     from datetime import datetime
     try:
         db = SessionLocal()
-        existing_event = db.query(Event).filter(Event.id == 1).first()
+        existing_event = db.query(Event).filter(Event.id == CURRENT_EVENT_ID).first()
         if not existing_event:
             event = Event(
-                id=1,
-                name='ACS Can Drive 2025',
+                id=CURRENT_EVENT_ID,
+                name=f'ACS Can Drive {datetime.now().year}',
                 start_date=datetime.now(),
                 created_at=datetime.now()
             )
             db.add(event)
             db.commit()
-            print('✅ Event 1 created successfully')
+            print(f'✅ Event {CURRENT_EVENT_ID} created successfully')
         else:
-            print('✅ Event 1 already exists')
+            print(f'✅ Event {CURRENT_EVENT_ID} already exists')
         db.close()
     except Exception as e:
         print(f'❌ Error ensuring event: {e}')
@@ -301,13 +302,13 @@ def debug_students():
     except Exception as e:
         return {"error": str(e)}
 
-@app.get("/api/events/1/students/search")
-def search_students_direct(q: str):
+@app.get("/api/events/{event_id}/students/search")
+def search_students_direct(event_id: int, q: str):
     from database import get_db
     from models import Student
     try:
         db = get_db_simple()
-        query = db.query(Student).filter(Student.event_id == 1)
+        query = db.query(Student).filter(Student.event_id == event_id)
         
         # Search by name (first_name + last_name)
         if q:
@@ -330,8 +331,8 @@ def search_students_direct(q: str):
     except Exception as e:
         return {"error": str(e)}
 
-@app.post("/api/events/1/students/verify")
-def verify_student_direct(payload: dict):
+@app.post("/api/events/{event_id}/students/verify")
+def verify_student_direct(event_id: int, payload: dict):
     from database import get_db
     from models import Student
     try:
@@ -358,7 +359,7 @@ def verify_student_direct(payload: dict):
                     last_name = ' '.join(parts[1:])
         
         # Search for student
-        query = db.query(Student).filter(Student.event_id == 1)
+        query = db.query(Student).filter(Student.event_id == event_id)
         
         if first_name and last_name:
             query = query.filter(
@@ -519,10 +520,10 @@ def test_leaderboard():
         "totalCans": 5
     }
 
-@app.get("/api/events/1/leaderboard")
-def get_leaderboard():
+@app.get("/api/events/{event_id}/leaderboard")
+def get_leaderboard(event_id: int):
     """
-    Get comprehensive leaderboard data for event 1
+    Get comprehensive leaderboard data for a specific event
     
     This endpoint calculates and returns leaderboard data including:
     - Top 50 students ranked by total cans collected
@@ -548,10 +549,10 @@ def get_leaderboard():
         # Get database connection - using simple connection for SQLite
         db = get_db_simple()
         
-        # Query all students and teachers for event 1
+        # Query all students and teachers for the specified event
         # These are the primary data sources for leaderboard calculations
-        students = db.query(Student).filter(Student.event_id == 1).all()
-        teachers = db.query(Teacher).filter(Teacher.event_id == 1).all()
+        students = db.query(Student).filter(Student.event_id == event_id).all()
+        teachers = db.query(Teacher).filter(Teacher.event_id == event_id).all()
         
         if not students and not teachers:
             return {
@@ -559,12 +560,14 @@ def get_leaderboard():
                 "topClasses": [],
                 "topGrades": [],
                 "topTeachers": [],
+                "classBuyout": [],
+                "allClassBuyout": [],
                 "totalCans": 0
             }
         
         # Calculate total cans using dual method for accuracy
         # Method 1: Sum all donations from Donation table (source of truth for transactions)
-        donations = db.query(Donation).filter(Donation.event_id == 1).all()
+        donations = db.query(Donation).filter(Donation.event_id == event_id).all()
         total_cans_from_donations = sum(donation.amount or 0 for donation in donations)
         
         # Method 2: Sum total_cans fields from Student and Teacher tables
@@ -755,13 +758,13 @@ def get_leaderboard():
             pass
 
 
-@app.get("/api/events/1/donations")
-def list_donations_direct():
+@app.get("/api/events/{event_id}/donations")
+def list_donations_direct(event_id: int):
     from database import get_db
     from models import Donation
     try:
         db = get_db_simple()
-        donations = db.query(Donation).filter(Donation.event_id == 1).all()
+        donations = db.query(Donation).filter(Donation.event_id == event_id).all()
         return donations
     except Exception as e:
         return {"error": str(e)}
