@@ -163,12 +163,95 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
   };
 
   /**
-   * Generate a visible street path from Google Maps geometry
-   * This helper function creates a Polyline path based on viewport bounds or location
+   * Get the ACTUAL road path using Google Maps Directions API
+   * This fetches the real road geometry so we can draw accurate street shapes
+   * 
+   * @param streetName - Name of the street
+   * @param geometry - Place geometry from autocomplete
+   * @returns Promise with array of LatLng points following the actual road
    */
-  const generateStreetPath = (geometry: google.maps.places.PlaceGeometry): google.maps.LatLngLiteral[] => {
+  const getActualRoadPath = async (streetName: string, geometry: google.maps.places.PlaceGeometry): Promise<google.maps.LatLngLiteral[]> => {
+    return new Promise((resolve) => {
+      if (!geometry.viewport && !geometry.location) {
+        resolve([]);
+        return;
+      }
+
+      const directionsService = new google.maps.DirectionsService();
+      
+      let origin: google.maps.LatLngLiteral;
+      let destination: google.maps.LatLngLiteral;
+      
+      if (geometry.viewport) {
+        const bounds = geometry.viewport;
+        const ne = bounds.getNorthEast();
+        const sw = bounds.getSouthWest();
+        
+        // Create origin and destination at opposite ends of the street's viewport
+        origin = { lat: sw.lat(), lng: sw.lng() };
+        destination = { lat: ne.lat(), lng: ne.lng() };
+      } else if (geometry.location) {
+        // If no viewport, create points along the street using the location
+        const center = geometry.location;
+        const offset = 0.005; // ~500m offset
+        origin = { lat: center.lat() - offset, lng: center.lng() - offset };
+        destination = { lat: center.lat() + offset, lng: center.lng() + offset };
+      } else {
+        resolve([]);
+        return;
+      }
+
+      // Request directions to get actual road path
+      directionsService.route(
+        {
+          origin: origin,
+          destination: destination,
+          travelMode: google.maps.TravelMode.DRIVING,
+        },
+        (result, status) => {
+          if (status === 'OK' && result && result.routes[0]) {
+            // Extract the actual path points from the route
+            const route = result.routes[0];
+            const path: google.maps.LatLngLiteral[] = [];
+            
+            // Get all points from the overview path (simplified path of entire route)
+            if (route.overview_path) {
+              route.overview_path.forEach((point) => {
+                path.push({ lat: point.lat(), lng: point.lng() });
+              });
+            }
+            
+            // If overview_path is empty, try legs
+            if (path.length === 0 && route.legs) {
+              route.legs.forEach((leg) => {
+                leg.steps.forEach((step) => {
+                  if (step.path) {
+                    step.path.forEach((point) => {
+                      path.push({ lat: point.lat(), lng: point.lng() });
+                    });
+                  }
+                });
+              });
+            }
+            
+            console.log(`Got actual road path for ${streetName}: ${path.length} points`);
+            resolve(path);
+          } else {
+            console.log(`Directions API failed for ${streetName}, falling back to viewport path`);
+            // Fallback to viewport-based path
+            resolve(generateFallbackPath(geometry));
+          }
+        }
+      );
+    });
+  };
+
+  /**
+   * Generate a fallback path when Directions API fails
+   * Creates a path based on viewport bounds
+   */
+  const generateFallbackPath = (geometry: google.maps.places.PlaceGeometry): google.maps.LatLngLiteral[] => {
     if (geometry.viewport) {
-      // Use viewport to create a path along the street
       const bounds = geometry.viewport;
       const ne = bounds.getNorthEast();
       const sw = bounds.getSouthWest();
@@ -177,42 +260,153 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
       const latDiff = ne.lat() - sw.lat();
       const lngDiff = ne.lng() - sw.lng();
       
+      // Create multiple points along the street for smoother rendering
+      const numPoints = 10;
+      const path: google.maps.LatLngLiteral[] = [];
+      
       if (Math.abs(lngDiff) > Math.abs(latDiff)) {
-        // Horizontal street
+        // Horizontal street - create points from west to east
         const midLat = (ne.lat() + sw.lat()) / 2;
-        return [
-          { lat: midLat, lng: sw.lng() },
-          { lat: midLat, lng: ne.lng() },
-        ];
+        for (let i = 0; i <= numPoints; i++) {
+          const lng = sw.lng() + (lngDiff * i / numPoints);
+          path.push({ lat: midLat, lng });
+        }
       } else {
-        // Vertical street
+        // Vertical street - create points from south to north
         const midLng = (ne.lng() + sw.lng()) / 2;
-        return [
-          { lat: sw.lat(), lng: midLng },
-          { lat: ne.lat(), lng: midLng },
-        ];
+        for (let i = 0; i <= numPoints; i++) {
+          const lat = sw.lat() + (latDiff * i / numPoints);
+          path.push({ lat, lng: midLng });
+        }
       }
-    } else if (geometry.bounds) {
-      // Use bounds cross pattern if viewport not available
-      const bounds = geometry.bounds;
+      return path;
+    } else if (geometry.location) {
+      const center = geometry.location;
+      const radius = 0.003;
+      return [
+        { lat: center.lat() - radius, lng: center.lng() },
+        { lat: center.lat() + radius, lng: center.lng() },
+      ];
+    }
+    return [];
+  };
+
+  /**
+   * Generate a visible street path from Google Maps geometry (synchronous fallback)
+   * Used when we can't get the actual road path from Directions API
+   */
+  const generateStreetPath = (geometry: google.maps.places.PlaceGeometry): google.maps.LatLngLiteral[] => {
+    return generateFallbackPath(geometry);
+  };
+
+  /**
+   * Get actual road path from GeocoderResult geometry
+   * Used for processing existing reservations
+   */
+  const getActualRoadPathFromGeometry = async (streetName: string, geometry: google.maps.GeocoderGeometry): Promise<google.maps.LatLngLiteral[]> => {
+    return new Promise((resolve) => {
+      const directionsService = new google.maps.DirectionsService();
+      
+      let origin: google.maps.LatLngLiteral;
+      let destination: google.maps.LatLngLiteral;
+      
+      if (geometry.viewport) {
+        const bounds = geometry.viewport;
+        const ne = bounds.getNorthEast();
+        const sw = bounds.getSouthWest();
+        origin = { lat: sw.lat(), lng: sw.lng() };
+        destination = { lat: ne.lat(), lng: ne.lng() };
+      } else if (geometry.bounds) {
+        const bounds = geometry.bounds;
+        const ne = bounds.getNorthEast();
+        const sw = bounds.getSouthWest();
+        origin = { lat: sw.lat(), lng: sw.lng() };
+        destination = { lat: ne.lat(), lng: ne.lng() };
+      } else if (geometry.location) {
+        const center = geometry.location;
+        const offset = 0.005;
+        origin = { lat: center.lat() - offset, lng: center.lng() - offset };
+        destination = { lat: center.lat() + offset, lng: center.lng() + offset };
+      } else {
+        resolve([]);
+        return;
+      }
+
+      directionsService.route(
+        {
+          origin: origin,
+          destination: destination,
+          travelMode: google.maps.TravelMode.DRIVING,
+        },
+        (result, status) => {
+          if (status === 'OK' && result && result.routes[0]) {
+            const route = result.routes[0];
+            const path: google.maps.LatLngLiteral[] = [];
+            
+            if (route.overview_path) {
+              route.overview_path.forEach((point) => {
+                path.push({ lat: point.lat(), lng: point.lng() });
+              });
+            }
+            
+            if (path.length === 0 && route.legs) {
+              route.legs.forEach((leg) => {
+                leg.steps.forEach((step) => {
+                  if (step.path) {
+                    step.path.forEach((point) => {
+                      path.push({ lat: point.lat(), lng: point.lng() });
+                    });
+                  }
+                });
+              });
+            }
+            
+            console.log(`Got actual road path for ${streetName}: ${path.length} points`);
+            resolve(path);
+          } else {
+            console.log(`Directions API failed for ${streetName}, using fallback`);
+            // Fallback to viewport-based path
+            const fallback = generateFallbackPathFromGeocoder(geometry);
+            resolve(fallback);
+          }
+        }
+      );
+    });
+  };
+
+  /**
+   * Generate fallback path from GeocoderGeometry
+   */
+  const generateFallbackPathFromGeocoder = (geometry: google.maps.GeocoderGeometry): google.maps.LatLngLiteral[] => {
+    const bounds = geometry.viewport || geometry.bounds;
+    if (bounds) {
       const ne = bounds.getNorthEast();
       const sw = bounds.getSouthWest();
-      const midLat = (ne.lat() + sw.lat()) / 2;
-      const midLng = (ne.lng() + sw.lng()) / 2;
+      const latDiff = ne.lat() - sw.lat();
+      const lngDiff = ne.lng() - sw.lng();
+      const numPoints = 10;
+      const path: google.maps.LatLngLiteral[] = [];
       
-      return [
-        { lat: midLat, lng: sw.lng() },
-        { lat: midLat, lng: ne.lng() },
-        { lat: sw.lat(), lng: midLng },
-        { lat: ne.lat(), lng: midLng },
-      ];
+      if (Math.abs(lngDiff) > Math.abs(latDiff)) {
+        const midLat = (ne.lat() + sw.lat()) / 2;
+        for (let i = 0; i <= numPoints; i++) {
+          const lng = sw.lng() + (lngDiff * i / numPoints);
+          path.push({ lat: midLat, lng });
+        }
+      } else {
+        const midLng = (ne.lng() + sw.lng()) / 2;
+        for (let i = 0; i <= numPoints; i++) {
+          const lat = sw.lat() + (latDiff * i / numPoints);
+          path.push({ lat, lng: midLng });
+        }
+      }
+      return path;
     } else if (geometry.location) {
-      // Fallback to small segment around location
       const center = geometry.location;
-      const radius = 0.002; // ~200 meters
+      const radius = 0.003;
       return [
-        { lat: center.lat() - radius, lng: center.lng() - radius },
-        { lat: center.lat() + radius, lng: center.lng() + radius },
+        { lat: center.lat() - radius, lng: center.lng() },
+        { lat: center.lat() + radius, lng: center.lng() },
       ];
     }
     return [];
@@ -284,13 +478,16 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
         console.error('Error parsing geojson path:', e, 'geojson was:', r.geojson);
       }
       
-      // 2. If no cached path, fall back to live geocoding (Legacy support)
+      // 2. If no cached path, use Directions API to get ACTUAL road geometry
       if (path.length === 0) {
         try {
           const streetName = r.street_name || r.streetName || '';
           if (streetName) {
+            console.log(`Fetching actual road path for reservation: ${streetName}`);
+            
+            // First, geocode to get the street's geometry
             const geocoder = new google.maps.Geocoder();
-            const result = await new Promise<google.maps.GeocoderResult[]>((resolve) => {
+            const geocodeResult = await new Promise<google.maps.GeocoderResult[]>((resolve) => {
               geocoder.geocode(
                 { address: `${streetName}, Windsor, ON, Canada` },
                 (results, status) => {
@@ -300,12 +497,14 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
               );
             });
             
-            if (result && result.length > 0 && result[0].geometry) {
-              path = generateStreetPath(result[0].geometry);
+            if (geocodeResult && geocodeResult.length > 0 && geocodeResult[0].geometry) {
+              // Use Directions API to get the actual road path
+              const geometry = geocodeResult[0].geometry;
+              path = await getActualRoadPathFromGeometry(streetName, geometry);
             }
           }
         } catch (error) {
-          console.error(`Geocoding fallback failed for ${r.street_name}:`, error);
+          console.error(`Failed to get road path for ${r.street_name}:`, error);
         }
       }
         
@@ -313,7 +512,6 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
       if (path.length === 0) {
         console.log(`Using fallback path for ${r.street_name || r.streetName}`);
         const radius = 0.003; // ~300 meters for good visibility
-        // Create a cross-shaped path for better visibility
         path = [
           { lat: pos.lat - radius, lng: pos.lng },
           { lat: pos.lat + radius, lng: pos.lng },
@@ -397,28 +595,42 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
   /**
    * Handle place selection from Autocomplete
    * When a user selects a place, show info window and pan map to it
-   * Also generates the path immediately for storage
+   * Fetches the ACTUAL road geometry using Directions API for accurate street highlighting
    */
-  const handlePlaceSelect = () => {
+  const handlePlaceSelect = async () => {
     if (!autocompleteRef.current) return;
     
     const place = autocompleteRef.current.getPlace();
     if (!place.geometry?.location) return;
 
-    // Generate path immediately from geometry
-    const path = place.geometry ? generateStreetPath(place.geometry) : [];
-
+    const streetName = place.formatted_address || place.name || '';
+    
+    // Show loading state immediately
     setSelectedPlace({
       lat: place.geometry.location.lat(),
       lng: place.geometry.location.lng(),
-      name: place.formatted_address || place.name || '',
-      path: path
+      name: streetName,
+      path: [] // Will be filled with actual road path
     });
     setShowInfo(true);
     
     // Pan map to selected location
     map?.panTo(place.geometry.location);
     map?.setZoom(16);
+
+    // Fetch the ACTUAL road path using Directions API
+    console.log(`Fetching actual road path for: ${streetName}`);
+    const actualPath = await getActualRoadPath(streetName, place.geometry);
+    
+    // Update with actual path
+    setSelectedPlace({
+      lat: place.geometry.location.lat(),
+      lng: place.geometry.location.lng(),
+      name: streetName,
+      path: actualPath.length > 0 ? actualPath : generateStreetPath(place.geometry)
+    });
+    
+    console.log(`Street ${streetName} path has ${actualPath.length} points`);
   };
 
   /**
