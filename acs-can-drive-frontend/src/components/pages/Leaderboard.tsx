@@ -1,3 +1,40 @@
+/**
+ * Leaderboard Page Component
+ * ==========================
+ * 
+ * Displays comprehensive leaderboard data for the can drive event. This is
+ * the main page for viewing donation rankings and progress.
+ * 
+ * Features:
+ * - Real-time leaderboard data with auto-refresh every 30 seconds
+ * - Multiple ranking categories:
+ *   - Top Students: Individual student rankings by total cans
+ *   - Top Teachers: Teacher rankings by total cans
+ *   - Top Classes: Class/homeroom rankings by combined student+teacher cans
+ *   - Top Grades: Grade-level rankings by total cans from all students
+ *   - Class Buyout: Tracks eligibility for class buyout incentive
+ * 
+ * Data Visualization:
+ * - Summary cards showing total cans and top performers
+ * - Bar chart visualization of top 10 students
+ * - Tabbed interface for easy navigation between categories
+ * - Progress bars for class buyout eligibility
+ * 
+ * Class Buyout Logic:
+ * - Classes need 10 cans per student to be eligible
+ * - First 20 eligible classes receive the buyout
+ * - Progress percentage shows how close each class is to eligibility
+ * 
+ * Technical Details:
+ * - Uses React Query pattern for data fetching
+ * - Recharts library for chart visualization
+ * - Material-UI for consistent styling
+ * - Framer Motion for animations
+ * 
+ * @component
+ * @author ACS Can Drive Development Team
+ */
+
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';

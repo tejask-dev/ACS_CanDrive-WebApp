@@ -230,77 +230,11 @@ def fix_homeroom_numbers_endpoint():
 def options_handler(path: str):
     return {"message": "OK"}
 
-@app.get("/debug/admin")
-def debug_admin():
-    from database import get_db
-    from models import Admin
-    try:
-        db = get_db_simple()
-        admin = db.query(Admin).filter(Admin.username == 'ACS_CanDrive').first()
-        if admin:
-            return {
-                "admin_exists": True,
-                "username": admin.username,
-                "created_at": str(admin.created_at),
-                "password_hash": admin.password_hash[:20] + "..."
-            }
-        else:
-            return {"admin_exists": False}
-    except Exception as e:
-        return {"error": str(e)}
-
-@app.get("/test-students")
-def test_students(grade: str = None, homeroom: str = None, name: str = None, teacher: str = None):
-    from database import get_db
-    from models import Student
-    try:
-        db = get_db_simple()
-        students = db.query(Student).filter(Student.event_id == 1).all()
-        return {
-            "count": len(students),
-            "params": {"grade": grade, "homeroom": homeroom, "name": name, "teacher": teacher},
-            "students": [
-                {
-                    "id": s.id,
-                    "name": f"{s.first_name} {s.last_name}".strip(),
-                    "grade": s.grade,
-                    "homeroom": s.homeroom_number,
-                    "teacher": s.homeroom_teacher,
-                    "total_cans": s.total_cans
-                }
-                for s in students[:5]  # First 5 students
-            ]
-        }
-    except Exception as e:
-        return {"error": str(e)}
+# =============================================================================
+# STUDENT MANAGEMENT ENDPOINTS
+# =============================================================================
 
 
-@app.get("/test-students")
-def test_students():
-    return {"message": "Students endpoint test", "status": "working"}
-
-@app.get("/debug/students")
-def debug_students():
-    from database import get_db
-    from models import Student
-    try:
-        db = get_db_simple()
-        students = db.query(Student).filter(Student.event_id == 1).all()
-        return {
-            "count": len(students),
-            "students": [
-                {
-                    "id": s.id,
-                    "name": f"{s.first_name} {s.last_name}",
-                    "grade": s.grade,
-                    "homeroom": s.homeroom_number,
-                    "teacher": s.homeroom_teacher
-                }
-                for s in students[:5]  # First 5 students
-            ]
-        }
-    except Exception as e:
-        return {"error": str(e)}
 
 @app.get("/api/events/{event_id}/students/search")
 def search_students_direct(event_id: int, q: str):
@@ -395,130 +329,10 @@ def verify_student_direct(event_id: int, payload: dict):
     except Exception as e:
         return {"error": str(e)}
 
-@app.get("/debug/students")
-def debug_students():
-    from database import get_db
-    from models import Student
-    try:
-        db = get_db_simple()
-        students = db.query(Student).all()
-        print(f"DEBUG: Found {len(students)} total students")
-        for s in students[:5]:  # Print first 5 students
-            print(f"DEBUG: Student {s.first_name} {s.last_name}, event_id: {s.event_id}, total_cans: {s.total_cans}")
-        return {
-            "total_students": len(students),
-            "students": [
-                {
-                    "name": f"{s.first_name} {s.last_name}",
-                    "event_id": s.event_id,
-                    "total_cans": s.total_cans
-                } for s in students[:10]
-            ]
-        }
-    except Exception as e:
-        return {"error": str(e)}
 
-@app.get("/debug/database")
-def debug_database():
-    from database import get_db
-    from models import Student, Event
-    try:
-        print("DEBUG: Testing database connection...")
-        db = get_db_simple()
-        
-        # Test basic query
-        student_count = db.query(Student).count()
-        print(f"DEBUG: Student count: {student_count}")
-        
-        # Test event query
-        events = db.query(Event).all()
-        print(f"DEBUG: Event count: {len(events)}")
-        
-        # Test student query with limit
-        students = db.query(Student).limit(5).all()
-        print(f"DEBUG: First 5 students:")
-        for s in students:
-            print(f"  - {s.first_name} {s.last_name}, grade: {s.grade}, total_cans: {s.total_cans}")
-        
-        return {
-            "student_count": student_count,
-            "event_count": len(events),
-            "sample_students": [
-                {
-                    "name": f"{s.first_name} {s.last_name}",
-                    "grade": s.grade,
-                    "total_cans": s.total_cans,
-                    "event_id": s.event_id
-                } for s in students
-            ]
-        }
-    except Exception as e:
-        print(f"DEBUG: Database error: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        return {"error": str(e)}
-
-@app.get("/debug/leaderboard")
-def debug_leaderboard():
-    from database import get_db
-    from models import Student
-    from collections import defaultdict
-    try:
-        print("DEBUG: Starting debug leaderboard...")
-        db = get_db_simple()
-        students = db.query(Student).all()
-        print(f"DEBUG: Found {len(students)} students")
-        
-        if len(students) == 0:
-            return {"error": "No students found"}
-        
-        # Test with first 5 students
-        test_students = students[:5]
-        print(f"DEBUG: Testing with {len(test_students)} students")
-        
-        # Calculate totals
-        total_cans = sum(int(s.total_cans or 0) for s in test_students)
-        print(f"DEBUG: Total cans: {total_cans}")
-        
-        # Create simple leaderboard
-        top_students = []
-        for idx, s in enumerate(test_students):
-            student_data = {
-                "rank": idx + 1,
-                "name": f"{s.first_name} {s.last_name}".strip(),
-                "grade": s.grade,
-                "homeroomNumber": s.homeroom_number,
-                "totalCans": int(s.total_cans or 0),
-            }
-            top_students.append(student_data)
-            print(f"DEBUG: Student {idx+1}: {student_data}")
-        
-        return {
-            "topStudents": top_students,
-            "totalCans": total_cans,
-            "debug": f"Processed {len(test_students)} students"
-        }
-        
-    except Exception as e:
-        print(f"DEBUG: Error in debug leaderboard: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        return {"error": str(e)}
-
-@app.get("/test/leaderboard")
-def test_leaderboard():
-    return {
-        "topStudents": [
-            {"rank": 1, "name": "Test Student", "grade": 12, "homeroomNumber": "101", "totalCans": 5}
-        ],
-        "topClasses": [
-            {"rank": 1, "name": "Test Teacher 101", "homeroomNumber": "101", "totalCans": 5}
-        ],
-        "topGrades": [
-            {"rank": 1, "grade": 12, "totalCans": 5}
-        ],
-        "totalCans": 5
-    }
+# =============================================================================
+# LEADERBOARD ENDPOINTS
+# =============================================================================
 
 @app.get("/api/events/{event_id}/leaderboard")
 def get_leaderboard(event_id: int):
@@ -769,8 +583,22 @@ def list_donations_direct(event_id: int):
     except Exception as e:
         return {"error": str(e)}
 
-@app.post("/api/events/1/donations")
-def add_donation_direct(payload: dict):
+@app.post("/api/events/{event_id}/donations")
+def add_donation_direct(event_id: int, payload: dict):
+    """
+    Add a new donation for a student or teacher.
+    
+    This endpoint records a donation and updates the total_cans count for the
+    respective student or teacher. Timestamps are stored in UTC after converting
+    from Eastern Time for accurate daily tracking.
+    
+    Args:
+        event_id: The event ID to add the donation to
+        payload: JSON body with student_id or teacher_id, amount, and optional notes
+    
+    Returns:
+        The created donation record
+    """
     from database import get_db
     from models import Donation, Student, Teacher
     try:
@@ -784,7 +612,7 @@ def add_donation_direct(payload: dict):
         now_utc = now_eastern.astimezone(timezone.utc)
         
         donation = Donation(
-            event_id=1,
+            event_id=event_id,
             student_id=payload.get('student_id'),
             teacher_id=payload.get('teacher_id'),
             amount=payload.get('amount', 0),
@@ -797,7 +625,7 @@ def add_donation_direct(payload: dict):
         if payload.get('student_id'):
             student = db.query(Student).filter(
                 Student.id == payload.get('student_id'), 
-                Student.event_id == 1
+                Student.event_id == event_id
             ).first()
             
             if student:
@@ -808,7 +636,7 @@ def add_donation_direct(payload: dict):
         elif payload.get('teacher_id'):
             teacher = db.query(Teacher).filter(
                 Teacher.id == payload.get('teacher_id'), 
-                Teacher.event_id == 1
+                Teacher.event_id == event_id
             ).first()
             
             if teacher:
@@ -824,13 +652,29 @@ def add_donation_direct(payload: dict):
     except Exception as e:
         return {"error": str(e)}
 
-@app.get("/api/events/1/map-reservations")
-def list_map_reservations_direct():
+# =============================================================================
+# MAP RESERVATION ENDPOINTS
+# =============================================================================
+
+@app.get("/api/events/{event_id}/map-reservations")
+def list_map_reservations_direct(event_id: int):
+    """
+    Get all map reservations for a specific event.
+    
+    Returns a list of all street reservations including geojson data for
+    rendering street highlights on the map.
+    
+    Args:
+        event_id: The event ID to get reservations for
+    
+    Returns:
+        List of reservation objects with street and student information
+    """
     from database import get_db
     from models import MapReservation
     try:
         db = get_db_simple()
-        reservations = db.query(MapReservation).filter(MapReservation.event_id == 1).all()
+        reservations = db.query(MapReservation).filter(MapReservation.event_id == event_id).all()
         return [
             {
                 "id": r.id,
@@ -839,8 +683,8 @@ def list_map_reservations_direct():
                 "studentName": r.name,
                 "streetName": r.street_name,
                 "groupMembers": r.group_members or "",
-                "geojson": r.geojson or "{}",  # Return the stored geojson data
-                "latitude": 0,  # Keep for compatibility
+                "geojson": r.geojson or "{}",  # Return the stored geojson data for map rendering
+                "latitude": 0,  # Keep for backward compatibility
                 "longitude": 0,
                 "createdAt": r.timestamp.isoformat() if r.timestamp else None
             }
@@ -849,9 +693,18 @@ def list_map_reservations_direct():
     except Exception as e:
         return {"error": str(e)}
 
-@app.delete("/api/events/1/map-reservations/{reservation_id}")
-def delete_map_reservation_direct(reservation_id: int):
-    """Delete a map reservation for event 1"""
+@app.delete("/api/events/{event_id}/map-reservations/{reservation_id}")
+def delete_map_reservation_direct(event_id: int, reservation_id: int):
+    """
+    Delete a map reservation.
+    
+    Args:
+        event_id: The event ID
+        reservation_id: The reservation ID to delete
+    
+    Returns:
+        Success message or error
+    """
     from models import MapReservation
     try:
         db = get_db_simple()
@@ -859,7 +712,7 @@ def delete_map_reservation_direct(reservation_id: int):
         # Find the reservation
         reservation = db.query(MapReservation).filter(
             MapReservation.id == reservation_id,
-            MapReservation.event_id == 1
+            MapReservation.event_id == event_id
         ).first()
         
         if not reservation:
@@ -873,9 +726,17 @@ def delete_map_reservation_direct(reservation_id: int):
     except Exception as e:
         return {"error": str(e)}
 
-@app.get("/api/events/1/map-reservations/export.csv")
-def export_map_reservations_csv():
-    """Export map reservations as CSV"""
+@app.get("/api/events/{event_id}/map-reservations/export.csv")
+def export_map_reservations_csv(event_id: int):
+    """
+    Export map reservations as a CSV file.
+    
+    Args:
+        event_id: The event ID to export reservations for
+    
+    Returns:
+        CSV file download with all reservation data
+    """
     from database import get_db
     from models import MapReservation
     import csv
@@ -883,7 +744,7 @@ def export_map_reservations_csv():
     
     try:
         db = get_db_simple()
-        reservations = db.query(MapReservation).filter(MapReservation.event_id == 1).all()
+        reservations = db.query(MapReservation).filter(MapReservation.event_id == event_id).all()
         
         # Create CSV content
         output = io.StringIO()
@@ -921,8 +782,24 @@ def export_map_reservations_csv():
             status_code=500
         )
 
-@app.post("/api/events/1/map-reservations")
-def reserve_street_direct(payload: dict):
+@app.post("/api/events/{event_id}/map-reservations")
+def reserve_street_direct(event_id: int, payload: dict):
+    """
+    Reserve a street for can collection.
+    
+    This endpoint handles street reservations for both students and teachers.
+    It checks for existing reservations to prevent conflicts and supports
+    updating existing reservations by the same person.
+    
+    The geojson field stores the street path coordinates for map highlighting.
+    
+    Args:
+        event_id: The event ID
+        payload: JSON body with name, street_name, student_id, group_members, and geojson
+    
+    Returns:
+        The created reservation object
+    """
     from database import get_db
     from models import MapReservation
     try:
@@ -933,24 +810,23 @@ def reserve_street_direct(payload: dict):
         if not street_names:
             return {"error": "No street name provided"}
         
-        # Split comma-separated street names
+        # Split comma-separated street names (supports multiple street selection)
         streets_to_check = [street.strip() for street in street_names.split(',')]
         
-        # Check if any of these streets are already reserved
+        # Check if any of these streets are already reserved by someone else
         for street in streets_to_check:
             # Extract just the street name (before the first comma) for comparison
             street_name_only = street.split(',')[0].strip() if ',' in street else street
             
-            # Check for exact street name match in existing reservations
-            # Look for reservations that contain this exact street name at the beginning
+            # Check for existing reservations with similar street names
             existing = db.query(MapReservation).filter(
-                MapReservation.event_id == 1,
+                MapReservation.event_id == event_id,
                 MapReservation.street_name.ilike(f'{street_name_only}%')
             ).first()
             
             if existing:
                 # Check if it's the same person trying to reserve (allow editing)
-                existing_name = existing.name or existing.student_name or ''
+                existing_name = existing.name or ''
                 current_name = payload.get('name') or payload.get('student_name', '')
                 
                 if existing_name.lower() != current_name.lower():
@@ -963,14 +839,14 @@ def reserve_street_direct(payload: dict):
                     # Same person - delete existing reservation to allow update
                     db.delete(existing)
         
-        # Create new reservation
+        # Create new reservation with geojson path data for map highlighting
         reservation = MapReservation(
-            event_id=1,
+            event_id=event_id,
             student_id=payload.get('student_id'),
             name=payload.get('name') or payload.get('student_name', 'Unknown'),
             street_name=payload.get('street_name'),
             group_members=payload.get('group_members', ''),
-            geojson=payload.get('geojson', '{}')
+            geojson=payload.get('geojson', '{}')  # Store path coordinates for map rendering
         )
         
         db.add(reservation)
@@ -983,7 +859,7 @@ def reserve_street_direct(payload: dict):
             "studentId": reservation.student_id,
             "studentName": reservation.name,
             "streetName": reservation.street_name,
-            "geojson": reservation.geojson or "{}",  # Return the stored geojson data
+            "geojson": reservation.geojson or "{}",
             "latitude": 0,
             "longitude": 0,
             "createdAt": reservation.timestamp.isoformat() if reservation.timestamp else None
@@ -991,16 +867,32 @@ def reserve_street_direct(payload: dict):
     except Exception as e:
         return {"error": str(e)}
 
-@app.get("/api/events/1/students")
-def get_students_direct(grade: str = None, homeroom: str = None, name: str = None, teacher: str = None):
+@app.get("/api/events/{event_id}/students")
+def get_students_direct(event_id: int, grade: str = None, homeroom: str = None, name: str = None, teacher: str = None):
+    """
+    Get all students for an event with optional filtering.
+    
+    Supports filtering by grade, homeroom number, student name, and teacher name.
+    Used by the admin dashboard for student management and donation recording.
+    
+    Args:
+        event_id: The event ID
+        grade: Optional grade filter
+        homeroom: Optional homeroom number filter
+        name: Optional name search filter
+        teacher: Optional teacher name filter
+    
+    Returns:
+        List of student objects matching the filters
+    """
     from database import get_db
     from models import Student
     from sqlalchemy import String
     try:
         db = get_db_simple()
-        query = db.query(Student).filter(Student.event_id == 1)
+        query = db.query(Student).filter(Student.event_id == event_id)
         
-        # Apply filters
+        # Apply optional filters
         if grade:
             query = query.filter(Student.grade == grade)
         if homeroom:
@@ -1030,9 +922,22 @@ def get_students_direct(grade: str = None, homeroom: str = None, name: str = Non
     except Exception as e:
         return {"error": str(e)}
 
-@app.put("/api/events/1/students/{student_id}")
-def update_student_direct(student_id: int, payload: dict):
-    """Update student data for event 1"""
+@app.put("/api/events/{event_id}/students/{student_id}")
+def update_student_direct(event_id: int, student_id: int, payload: dict):
+    """
+    Update a student's information.
+    
+    Allows updating student name, grade, homeroom, and total cans count.
+    Used by admins for manual corrections and data management.
+    
+    Args:
+        event_id: The event ID
+        student_id: The student ID to update
+        payload: JSON body with fields to update
+    
+    Returns:
+        Updated student object
+    """
     from models import Student
     try:
         db = get_db_simple()
@@ -1040,13 +945,13 @@ def update_student_direct(student_id: int, payload: dict):
         # Find the student
         student = db.query(Student).filter(
             Student.id == student_id,
-            Student.event_id == 1
+            Student.event_id == event_id
         ).first()
         
         if not student:
             return {"error": "Student not found"}
         
-        # Update fields if provided
+        # Update fields if provided in payload
         if "totalCans" in payload:
             student.total_cans = payload["totalCans"]
         if "first_name" in payload:
@@ -1076,14 +981,25 @@ def update_student_direct(student_id: int, payload: dict):
     except Exception as e:
         return {"error": str(e)}
 
-@app.get("/api/events/1/teachers")
-def get_teachers_direct():
-    """Get all teachers for event 1"""
+@app.get("/api/events/{event_id}/teachers")
+def get_teachers_direct(event_id: int):
+    """
+    Get all teachers for an event.
+    
+    Returns all teachers registered for the can drive event.
+    Used by admin dashboard and donation recording.
+    
+    Args:
+        event_id: The event ID
+    
+    Returns:
+        List of teacher objects
+    """
     from database import get_db
     from models import Teacher
     try:
         db = get_db_simple()
-        teachers = db.query(Teacher).filter(Teacher.event_id == 1).all()
+        teachers = db.query(Teacher).filter(Teacher.event_id == event_id).all()
         return [
             {
                 "id": t.id,
@@ -1098,34 +1014,27 @@ def get_teachers_direct():
     except Exception as e:
         return {"error": str(e)}
 
-@app.get("/create-admin")
-def create_admin():
-    from database import get_db
-    from models import Admin
-    from datetime import datetime
-    import hashlib
-    try:
-        db = get_db_simple()
-        
-        # Check if admin already exists
-        existing_admin = db.query(Admin).filter(Admin.username == 'ACS_CanDrive').first()
-        if existing_admin:
-            return {"message": "Admin user already exists", "username": existing_admin.username}
-        
-        # Create admin user
-        admin = Admin(
-            username='ACS_CanDrive',
-            password_hash=hashlib.sha256('Assumption_raiders'.encode()).hexdigest(),
-            created_at=datetime.now()
-        )
-        db.add(admin)
-        db.commit()
-        return {"message": "Admin user created successfully", "username": "ACS_CanDrive", "password": "Assumption_raiders"}
-    except Exception as e:
-        return {"error": str(e)}
+# =============================================================================
+# ROSTER UPLOAD ENDPOINTS
+# =============================================================================
 
-@app.post("/api/events/1/upload-roster")
-async def upload_roster_direct(file: UploadFile = File(...)):
+@app.post("/api/events/{event_id}/upload-roster")
+async def upload_roster_direct(event_id: int, file: UploadFile = File(...)):
+    """
+    Upload student roster from Excel file.
+    
+    Parses an Excel file containing student information and imports them into
+    the database. Supports various column formats and name patterns.
+    
+    Expected columns: Name (or First Name/Last Name), Grade, Homeroom, Teacher
+    
+    Args:
+        event_id: The event ID to import students for
+        file: Excel file (.xlsx) with student data
+    
+    Returns:
+        Count of students added
+    """
     from models import Student
     import openpyxl
     from io import BytesIO
@@ -1136,6 +1045,7 @@ async def upload_roster_direct(file: UploadFile = File(...)):
         sheet = wb.active
         added = 0
         header_indexes = None
+        
         for i, row in enumerate(sheet.iter_rows(values_only=True)):
             # Determine header mapping on first row
             if i == 0:
@@ -1162,17 +1072,12 @@ async def upload_roster_direct(file: UploadFile = File(...)):
             homeroom_number = val(header_indexes['homeroom_number'])
             homeroom_teacher = val(header_indexes['homeroom_teacher'])
             
-            # Format homeroom number properly
+            # Format homeroom number properly (normalize to 3 digits)
             if homeroom_number:
-                # Remove .0 suffix if present
                 if homeroom_number.endswith('.0'):
                     homeroom_number = homeroom_number[:-2]
-                
-                # Pad with leading zeros if it's a number (e.g., 18 -> 018)
-                if homeroom_number.isdigit():
-                    # Only pad if it's 1-2 digits (don't pad 118 -> 0118)
-                    if len(homeroom_number) <= 2:
-                        homeroom_number = homeroom_number.zfill(3)  # Pad to 3 digits: 18 -> 018
+                if homeroom_number.isdigit() and len(homeroom_number) <= 2:
+                    homeroom_number = homeroom_number.zfill(3)
 
             # Parse full name into first and last name
             if not full_name:
@@ -1181,7 +1086,7 @@ async def upload_roster_direct(file: UploadFile = File(...)):
             first_name = ''
             last_name = ''
             
-            # handle formats: "Last, First" or "First Last"
+            # Handle "Last, First" or "First Last" formats
             if ',' in full_name:
                 parts = [p.strip() for p in full_name.split(',', 1)]
                 if len(parts) == 2:
@@ -1197,27 +1102,28 @@ async def upload_roster_direct(file: UploadFile = File(...)):
             
             if not first_name:
                 continue
-            existing = (
-                db.query(Student)
-                .filter(
-                    Student.event_id == 1,
-                    Student.first_name == str(first_name).strip(),
-                    Student.last_name == str(last_name).strip(),
-                )
-                .first()
-            )
+                
+            # Check for duplicate students
+            existing = db.query(Student).filter(
+                Student.event_id == event_id,
+                Student.first_name == str(first_name).strip(),
+                Student.last_name == str(last_name).strip(),
+            ).first()
+            
             if existing:
                 continue
+                
             student = Student(
                 first_name=str(first_name).strip(),
                 last_name=str(last_name).strip(),
                 grade=str(grade).strip() if grade is not None else None,
                 homeroom_number=str(homeroom_number).strip() if homeroom_number is not None else None,
                 homeroom_teacher=str(homeroom_teacher).strip() if homeroom_teacher is not None else None,
-                event_id=1,
+                event_id=event_id,
             )
             db.add(student)
             added += 1
+            
         db.commit()
         print(f"Student upload completed: Added {added} students from {file.filename}")
         return {"message": f"Added {added} students from {file.filename}", "added": added}
@@ -1225,9 +1131,21 @@ async def upload_roster_direct(file: UploadFile = File(...)):
         print(f"Student upload error: {e}")
         return {"error": str(e)}
 
-@app.post("/api/events/1/upload-teachers")
-async def upload_teachers_direct(file: UploadFile = File(...)):
-    """Upload teachers Excel file"""
+@app.post("/api/events/{event_id}/upload-teachers")
+async def upload_teachers_direct(event_id: int, file: UploadFile = File(...)):
+    """
+    Upload teacher roster from Excel file.
+    
+    Parses an Excel file containing teacher names and imports them into
+    the database. Automatically matches teachers with student homeroom data.
+    
+    Args:
+        event_id: The event ID to import teachers for
+        file: Excel file (.xlsx) with teacher names
+    
+    Returns:
+        Count of teachers added
+    """
     from models import Teacher, Student
     import openpyxl
     from io import BytesIO
@@ -1238,22 +1156,22 @@ async def upload_teachers_direct(file: UploadFile = File(...)):
         sheet = wb.active
         added = 0
         
-        # Get existing teachers from student data
+        # Get existing teachers from student data to match homeroom numbers
         existing_teachers = set()
-        students = db.query(Student).filter(Student.event_id == 1).all()
+        students = db.query(Student).filter(Student.event_id == event_id).all()
         for student in students:
             if student.homeroom_teacher:
                 existing_teachers.add(student.homeroom_teacher.strip())
         
         for i, row in enumerate(sheet.iter_rows(values_only=True)):
-            if i == 0:  # Skip header
+            if i == 0:  # Skip header row
                 continue
                 
             teacher_name = str(row[0]).strip() if row[0] else None
             if not teacher_name:
                 continue
             
-            # Parse teacher name
+            # Parse teacher name into first and last name
             if ',' in teacher_name:
                 parts = [p.strip() for p in teacher_name.split(',', 1)]
                 if len(parts) == 2:
@@ -1272,7 +1190,7 @@ async def upload_teachers_direct(file: UploadFile = File(...)):
             
             # Check if teacher already exists
             existing_teacher = db.query(Teacher).filter(
-                Teacher.event_id == 1,
+                Teacher.event_id == event_id,
                 Teacher.first_name == first_name,
                 Teacher.last_name == last_name
             ).first()
@@ -1287,23 +1205,18 @@ async def upload_teachers_direct(file: UploadFile = File(...)):
                     homeroom_number = student.homeroom_number
                     break
             
-            # Format homeroom number properly if found
+            # Format homeroom number properly (normalize to 3 digits)
             if homeroom_number:
-                # Remove .0 suffix if present
                 if str(homeroom_number).endswith('.0'):
                     homeroom_number = str(homeroom_number)[:-2]
-                
-                # Pad with leading zeros if it's a number (e.g., 18 -> 018)
-                if str(homeroom_number).isdigit():
-                    # Only pad if it's 1-2 digits (don't pad 118 -> 0118)
-                    if len(str(homeroom_number)) <= 2:
-                        homeroom_number = str(homeroom_number).zfill(3)  # Pad to 3 digits: 18 -> 018
+                if str(homeroom_number).isdigit() and len(str(homeroom_number)) <= 2:
+                    homeroom_number = str(homeroom_number).zfill(3)
             
             teacher = Teacher(
                 first_name=first_name,
                 last_name=last_name,
                 full_name=teacher_name,
-                event_id=1,
+                event_id=event_id,
                 homeroom_number=homeroom_number
             )
             db.add(teacher)
@@ -1316,9 +1229,27 @@ async def upload_teachers_direct(file: UploadFile = File(...)):
         print(f"Teacher upload error: {e}")
         return {"error": str(e)}
 
-@app.get("/api/events/1/daily-donors")
-def get_daily_donors():
-    """Get top donors of the day"""
+# =============================================================================
+# DAILY DONORS ENDPOINT
+# =============================================================================
+
+@app.get("/api/events/{event_id}/daily-donors")
+def get_daily_donors(event_id: int):
+    """
+    Get top donors for the current day.
+    
+    Returns today's top students, teachers, and grades based on donations
+    made since 3 AM Eastern Time. Resets daily to show fresh daily rankings.
+    
+    The daily reset at 3 AM ensures that late-night donations are counted
+    toward the previous day's totals.
+    
+    Args:
+        event_id: The event ID
+    
+    Returns:
+        Top students, teachers, and grades for the day with their daily cans
+    """
     from models import Donation, Student, Teacher
     from datetime import datetime, date, timezone, timedelta
     from collections import defaultdict
@@ -1332,7 +1263,7 @@ def get_daily_donors():
         
         # Get today's date in Eastern Time (Windsor, Ontario)
         # Currently EDT (Eastern Daylight Time) = UTC-4
-        eastern_tz = timezone(timedelta(hours=-4))  # EDT (Eastern Daylight Time)
+        eastern_tz = timezone(timedelta(hours=-4))
         now_eastern = datetime.now(eastern_tz)
         
         # Daily reset at 3 AM Eastern Time
@@ -1343,7 +1274,6 @@ def get_daily_donors():
             today = now_eastern.date()
         
         # Convert Eastern time to UTC for database query
-        # Database stores in UTC, so we need to convert our Eastern time range to UTC
         # Day starts at 3 AM Eastern and ends at 2:59:59 AM Eastern the next day
         start_of_day_eastern = datetime.combine(today, datetime.min.time().replace(hour=3)).replace(tzinfo=eastern_tz)
         end_of_day_eastern = datetime.combine(today + timedelta(days=1), datetime.min.time().replace(hour=3)).replace(tzinfo=eastern_tz)
@@ -1353,7 +1283,7 @@ def get_daily_donors():
         end_of_day_utc = end_of_day_eastern.astimezone(timezone.utc)
         
         today_donations = db.query(Donation).filter(
-            Donation.event_id == 1,
+            Donation.event_id == event_id,
             Donation.donation_date >= start_of_day_utc,
             Donation.donation_date < end_of_day_utc
         ).all()
@@ -1375,7 +1305,7 @@ def get_daily_donors():
         if student_daily:
             students_with_donations = db.query(Student).filter(
                 Student.id.in_(student_daily.keys()),
-                Student.event_id == 1
+                Student.event_id == event_id
             ).all()
             
             for student in students_with_donations:
@@ -1390,7 +1320,7 @@ def get_daily_donors():
         if student_daily:
             students = db.query(Student).filter(
                 Student.id.in_(student_daily.keys()),
-                Student.event_id == 1
+                Student.event_id == event_id
             ).all()
             
             student_rankings = []
@@ -1433,7 +1363,7 @@ def get_daily_donors():
         if teacher_daily:
             teachers = db.query(Teacher).filter(
                 Teacher.id.in_(teacher_daily.keys()),
-                Teacher.event_id == 1
+                Teacher.event_id == event_id
             ).all()
             
             teacher_rankings = []
@@ -1476,9 +1406,25 @@ def get_daily_donors():
         except:
             pass
 
-@app.delete("/api/events/1/reset")
-def reset_event_direct(confirm: bool = False):
-    """Reset all data for event 1 - requires confirmation"""
+# =============================================================================
+# DATA MANAGEMENT ENDPOINTS
+# =============================================================================
+
+@app.delete("/api/events/{event_id}/reset")
+def reset_event_direct(event_id: int, confirm: bool = False):
+    """
+    Reset all data for an event - DANGEROUS OPERATION.
+    
+    This endpoint deletes ALL students, donations, map reservations, and teachers
+    for the specified event. Requires explicit confirmation via query parameter.
+    
+    Args:
+        event_id: The event ID to reset
+        confirm: Must be True to proceed with reset
+    
+    Returns:
+        Counts of deleted records
+    """
     from database import get_db
     from models import Student, Donation, MapReservation, Teacher
     try:
@@ -1488,23 +1434,23 @@ def reset_event_direct(confirm: bool = False):
         db = get_db_simple()
         
         # Count existing data before deletion
-        student_count = db.query(Student).filter(Student.event_id == 1).count()
-        donation_count = db.query(Donation).filter(Donation.event_id == 1).count()
-        reservation_count = db.query(MapReservation).filter(MapReservation.event_id == 1).count()
-        teacher_count = db.query(Teacher).filter(Teacher.event_id == 1).count()
+        student_count = db.query(Student).filter(Student.event_id == event_id).count()
+        donation_count = db.query(Donation).filter(Donation.event_id == event_id).count()
+        reservation_count = db.query(MapReservation).filter(MapReservation.event_id == event_id).count()
+        teacher_count = db.query(Teacher).filter(Teacher.event_id == event_id).count()
         
         print(f"RESET WARNING: Deleting {student_count} students, {donation_count} donations, {reservation_count} reservations, {teacher_count} teachers")
         
-        # Delete all data for event 1
-        db.query(MapReservation).filter(MapReservation.event_id == 1).delete()
-        db.query(Donation).filter(Donation.event_id == 1).delete()
-        db.query(Student).filter(Student.event_id == 1).delete()
-        db.query(Teacher).filter(Teacher.event_id == 1).delete()
+        # Delete all data for the event (order matters due to foreign keys)
+        db.query(MapReservation).filter(MapReservation.event_id == event_id).delete()
+        db.query(Donation).filter(Donation.event_id == event_id).delete()
+        db.query(Student).filter(Student.event_id == event_id).delete()
+        db.query(Teacher).filter(Teacher.event_id == event_id).delete()
         
         db.commit()
         return {
             "status": "ok", 
-            "message": "All data for event 1 has been reset",
+            "message": f"All data for event {event_id} has been reset",
             "deleted": {
                 "students": student_count,
                 "donations": donation_count,
@@ -1515,9 +1461,21 @@ def reset_event_direct(confirm: bool = False):
     except Exception as e:
         return {"error": str(e)}
 
-@app.post("/api/events/1/map-reservations/import")
-async def import_map_reservations_csv(file: UploadFile = File(...)):
-    """Import map reservations from CSV file"""
+@app.post("/api/events/{event_id}/map-reservations/import")
+async def import_map_reservations_csv(event_id: int, file: UploadFile = File(...)):
+    """
+    Import map reservations from a CSV file.
+    
+    Restores previously exported reservations or bulk imports new ones.
+    Expected columns: Student Name, Street Name, Group Members (optional)
+    
+    Args:
+        event_id: The event ID to import reservations for
+        file: CSV file with reservation data
+    
+    Returns:
+        Count of added and skipped records
+    """
     from models import MapReservation
     import csv
     import io
@@ -1526,36 +1484,29 @@ async def import_map_reservations_csv(file: UploadFile = File(...)):
     try:
         print(f"Starting import of file: {file.filename}")
         db = get_db_simple()
-        print("Database connection established")
         
         # Read CSV content
         content = await file.read()
         csv_content = content.decode('utf-8')
-        print(f"CSV content length: {len(csv_content)}")
         
         csv_reader = csv.DictReader(io.StringIO(csv_content))
-        print(f"CSV headers: {csv_reader.fieldnames}")
         
         added = 0
         skipped = 0
         for row_num, row in enumerate(csv_reader, 1):
-            print(f"Processing row {row_num}: {row}")
-            
             # Skip if required fields are missing
             if not row.get('Student Name') or not row.get('Street Name'):
-                print(f"Skipping row {row_num}: Missing required fields")
                 skipped += 1
                 continue
                 
             # Check if reservation already exists
             existing = db.query(MapReservation).filter(
-                MapReservation.event_id == 1,
+                MapReservation.event_id == event_id,
                 MapReservation.name == row['Student Name'],
                 MapReservation.street_name == row['Street Name']
             ).first()
             
             if existing:
-                print(f"Skipping row {row_num}: Duplicate reservation")
                 skipped += 1
                 continue
             
@@ -1563,31 +1514,26 @@ async def import_map_reservations_csv(file: UploadFile = File(...)):
             geojson_data = {}
             if row.get('Latitude') and row.get('Longitude'):
                 try:
-                    lat = float(row['Latitude'])
-                    lng = float(row['Longitude'])
                     geojson_data = {
-                        "lat": lat,
-                        "lng": lng,
+                        "lat": float(row['Latitude']),
+                        "lng": float(row['Longitude']),
                         "group": row.get('Group Members', '')
                     }
-                    print(f"Row {row_num}: Created geojson with coordinates {lat}, {lng}")
-                except (ValueError, TypeError) as e:
-                    print(f"Row {row_num}: Error parsing coordinates: {e}")
+                except (ValueError, TypeError):
                     geojson_data = {}
             
             # Create new reservation
             reservation = MapReservation(
-                event_id=1,
+                event_id=event_id,
                 name=row['Student Name'],
                 street_name=row['Street Name'],
                 group_members=row.get('Group Members', ''),
                 geojson=json.dumps(geojson_data) if geojson_data else '',
-                student_id=None  # Will be None for imported data
+                student_id=None
             )
             
             db.add(reservation)
             added += 1
-            print(f"Row {row_num}: Added reservation for {row['Student Name']}")
         
         db.commit()
         print(f"Import completed: {added} added, {skipped} skipped")
@@ -1595,13 +1541,26 @@ async def import_map_reservations_csv(file: UploadFile = File(...)):
         
     except Exception as e:
         print(f"Import error: {str(e)}")
-        import traceback
-        traceback.print_exc()
         return {"error": str(e)}
 
-@app.get("/api/events/1/leaderboard/csv")
-def export_leaderboard_csv():
-    """Export leaderboard data as CSV - only students who donated cans"""
+# =============================================================================
+# EXPORT ENDPOINTS
+# =============================================================================
+
+@app.get("/api/events/{event_id}/leaderboard/csv")
+def export_leaderboard_csv(event_id: int):
+    """
+    Export leaderboard data as CSV file.
+    
+    Exports all students and teachers who have donated cans, sorted by
+    total cans in descending order. Useful for record keeping and awards.
+    
+    Args:
+        event_id: The event ID to export leaderboard for
+    
+    Returns:
+        CSV file download with leaderboard data
+    """
     from models import Student, Teacher
     import csv
     import io
@@ -1610,8 +1569,8 @@ def export_leaderboard_csv():
         db = get_db_simple()
         
         # Get all students and teachers
-        students = db.query(Student).filter(Student.event_id == 1).all()
-        teachers = db.query(Teacher).filter(Teacher.event_id == 1).all()
+        students = db.query(Student).filter(Student.event_id == event_id).all()
+        teachers = db.query(Teacher).filter(Teacher.event_id == event_id).all()
         
         output = io.StringIO()
         writer = csv.writer(output)

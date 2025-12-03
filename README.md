@@ -378,6 +378,86 @@ For support and questions:
 - **Email**: Contact the development team
 - **Documentation**: Check this README and inline code comments
 
+## 🎓 IB Computer Science IA Documentation
+
+This project was developed as an IB Computer Science Internal Assessment (IA).
+
+### Criterion A: Planning
+
+**Client**: Assumption College School Student Council
+**Problem**: Manual tracking of can drive donations was time-consuming and error-prone
+
+**Solution Features**:
+1. Automated donation tracking with real-time leaderboards
+2. Interactive Google Maps street reservation system
+3. Admin dashboard for donation management
+4. Assembly reveal presentation mode
+
+### Criterion B: Solution Overview
+
+**System Architecture**:
+```
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│   React/Vite    │────▶│    FastAPI      │────▶│    SQLite DB    │
+│   Frontend      │◀────│    Backend      │◀────│                 │
+└─────────────────┘     └─────────────────┘     └─────────────────┘
+        │                       │
+        ▼                       ▼
+┌─────────────────┐     ┌─────────────────┐
+│  Google Maps    │     │   JWT Auth      │
+│     API         │     │   System        │
+└─────────────────┘     └─────────────────┘
+```
+
+**Key Algorithms**:
+- Leaderboard calculation using dual-method verification
+- Class buyout eligibility computation (10 cans per student)
+- Daily leaderboard reset at 3 AM Eastern Time
+- Street path generation using Google Geocoding API
+
+### Criterion C: Development
+
+**Technologies Used**:
+| Component | Technology | Purpose |
+|-----------|------------|---------|
+| Frontend | React 18 + TypeScript | Type-safe UI development |
+| Backend | FastAPI (Python) | High-performance REST API |
+| Database | SQLAlchemy + SQLite | ORM-based data persistence |
+| Maps | Google Maps JavaScript API | Interactive street selection |
+| Auth | JWT + SHA256 | Secure authentication |
+| UI | Material-UI + Framer Motion | Modern, animated interface |
+
+**Complex Techniques**:
+1. **Google Maps API Integration**: Real-time street highlighting with Polyline/Circle components
+2. **Timezone-aware Daily Tracking**: UTC storage with Eastern Time conversion
+3. **Optimistic UI Updates**: Immediate feedback with backend sync
+4. **RESTful API Design**: Resource-based endpoints with dynamic event IDs
+
+### Criterion D: Functionality
+
+**Success Criteria**:
+- ✅ Students can reserve streets on interactive map
+- ✅ Admins can record donations and track progress
+- ✅ Real-time leaderboard updates
+- ✅ Password-protected assembly reveal
+- ✅ Class buyout eligibility tracking
+- ✅ CSV export for record keeping
+
+### Criterion E: Evaluation
+
+**Testing Methods**:
+1. Unit testing of backend API endpoints
+2. Integration testing of frontend-backend communication
+3. User acceptance testing with Student Council members
+4. Load testing with sample data (1000+ students)
+
+**Future Improvements**:
+- Mobile-responsive optimization
+- Push notification support
+- Multi-year event history analytics
+
+---
+
 ## 🔄 Version History
 
 - **v1.0.0** - Initial release with core functionality
@@ -388,13 +468,15 @@ For support and questions:
 - **v1.5.0** - Added Class Buyout system
 - **v1.6.0** - Assembly-ready leaderboard with password protection
 - **v1.7.0** - Enhanced security and authentication
+- **v1.8.0** - Google Maps street highlighting with Polylines
+- **v1.9.0** - Industrial-level code cleanup and documentation
 
 ## 🎯 Future Enhancements
 
 - [ ] **Mobile App** - Native iOS/Android applications
 - [ ] **Push Notifications** - Real-time updates for donations
 - [ ] **Advanced Analytics** - Detailed reporting and insights
-- [ ] **Multi-Event Support** - Manage multiple can drive events
+- [ ] **Multi-Event Support** - Manage multiple can drive events (config-ready)
 - [ ] **Integration APIs** - Connect with school management systems
 - [ ] **Automated Emails** - Progress updates and reminders
 
@@ -403,3 +485,19 @@ For support and questions:
 **Made with ❤️ for ACS Can Drive Events**
 
 *Empowering students to make a difference, one can at a time.*
+
+---
+
+## 📚 Code Documentation
+
+All code files in this project include comprehensive comments explaining:
+- Purpose and functionality of each module
+- Function parameters and return values
+- Complex algorithm explanations
+- Design decisions and rationale
+
+For detailed code documentation, refer to the inline comments in:
+- `backend/main.py` - API endpoints and business logic
+- `backend/models.py` - Database schema and relationships
+- `backend/config.py` - Configuration management
+- `acs-can-drive-frontend/src/components/` - React components

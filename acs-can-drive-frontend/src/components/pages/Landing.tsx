@@ -1,9 +1,39 @@
+/**
+ * Landing Page Component
+ * ======================
+ * 
+ * The main entry point for the ACS Can Drive web application. This component
+ * serves as the public-facing homepage that students, teachers, and visitors
+ * see when they first access the application.
+ * 
+ * Key Features:
+ * - Hero section with animated background elements
+ * - Navigation buttons for student/teacher signup and leaderboard access
+ * - Feature cards explaining the can drive process
+ * - Prize information section
+ * - Password-protected leaderboard access for assembly reveal
+ * - Password-protected assembly reveal button with confetti animation
+ * - Daily donors section showing today's top contributors
+ * 
+ * Security Features:
+ * - Leaderboard numbers are hidden until assembly
+ * - Password protection for viewing full leaderboard
+ * - Separate password for assembly reveal presentation
+ * 
+ * Design:
+ * - Modern gradient purple theme consistent with ACS branding
+ * - Responsive design for mobile and desktop
+ * - Framer Motion animations for smooth user experience
+ * - Material-UI components for consistent styling
+ * 
+ * @component
+ * @author ACS Can Drive Development Team
+ */
+
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { Container, Typography, Box, Stack, Card, CardContent, Button as MUIButton, Dialog, DialogTitle, DialogContent, DialogActions, TextField } from '@mui/material';
 import { PersonAdd, Map, TrendingUp, EmojiEvents, Lock } from '@mui/icons-material';
-// import AcsCanLogo from '@/assets/acs-can-logo.svg';
-// import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import DailyDonors from './DailyDonors';

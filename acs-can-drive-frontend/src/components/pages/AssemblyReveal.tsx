@@ -1,3 +1,38 @@
+/**
+ * Assembly Reveal Component
+ * =========================
+ * 
+ * A special presentation page designed for school assembly reveals. This
+ * component creates an impressive animated reveal of can drive results.
+ * 
+ * Animation Sequence (Timed Reveals):
+ * 1. Top Class (0 seconds) - Shows immediately with confetti
+ * 2. Top 3 Students (10 seconds) - Reveals after initial delay
+ * 3. Total Cans (30 seconds) - Final grand reveal with count-up animation
+ * 
+ * Visual Features:
+ * - Auto-scrolling to each section as it reveals
+ * - Confetti bursts at each reveal stage
+ * - Count-up animation for total cans number
+ * - Gradient background with glassmorphism cards
+ * - Medal emojis (🥇🥈🥉) for top 3 students
+ * 
+ * Technical Implementation:
+ * - Uses useState/useEffect for animation timing
+ * - useRef for scroll positioning
+ * - Custom CSS confetti animation (no external library)
+ * - Framer Motion for card animations
+ * - Auto-scrolls down (not up) to each section
+ * 
+ * Usage:
+ * - Navigate to /assembly-reveal after entering password on landing page
+ * - Screen share during assembly for dramatic effect
+ * - Let it run automatically - no interaction needed
+ * 
+ * @component
+ * @author ACS Can Drive Development Team
+ */
+
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
