@@ -69,10 +69,17 @@ class Donation(DonationCreate):
         from_attributes = True
 
 class MapReservationCreate(BaseModel):
+    """
+    Schema for creating a new map reservation.
+    
+    The geojson field stores path coordinates for map highlighting.
+    Format: [{ lat, lng, name, path: [{lat, lng}, ...] }]
+    """
     student_id: Optional[int] = None
     name: str
     street_name: str
-    geojson: Optional[str] = None
+    group_members: Optional[str] = None  # Comma-separated names of group collection partners
+    geojson: Optional[str] = None  # Path coordinates for map highlighting
 
 class MapReservation(MapReservationCreate):
     id: int

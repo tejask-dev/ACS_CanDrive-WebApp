@@ -104,13 +104,28 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
 
   /**
    * Callback when map loads - initializes the map and loads data
+   * NOTE: We separate data loading from street path processing because
+   * React state updates are async. The useEffect below handles path processing.
    */
   const onLoad = useCallback((map: google.maps.Map) => {
+    console.log('Map loaded successfully');
     setMap(map);
     loadReservations();
     loadStudents();
     checkExistingReservation();
   }, []);
+
+  /**
+   * Effect to process street paths when BOTH map and reservations are available.
+   * This fixes the timing issue where processStreetPaths was called before
+   * the map state was updated (React state updates are async).
+   */
+  useEffect(() => {
+    if (isLoaded && map && reservations.length > 0) {
+      console.log('Processing street paths for', reservations.length, 'reservations');
+      processStreetPathsWithMap(reservations, map);
+    }
+  }, [isLoaded, map, reservations]);
 
   /**
    * Load all students from the API for group collection feature
@@ -132,16 +147,16 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
   }, []);
 
   /**
-   * Load all reservations from the API and process street paths
+   * Load all reservations from the API
+   * NOTE: Street path processing is handled by the useEffect hook that
+   * triggers when both map and reservations are available.
    */
   const loadReservations = async () => {
     try {
       const response = await api.get(API_ENDPOINTS.EVENTS.MAP_RESERVATIONS(eventId));
       console.log('Loaded reservations:', response.data);
       setReservations(response.data);
-      
-      // Process reservations to create street paths for highlighting
-      await processStreetPaths(response.data);
+      // Street path processing is handled by the useEffect hook
     } catch (error) {
       console.error('Failed to load reservations:', error);
     }
@@ -204,15 +219,23 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
   };
 
   /**
-   * Process reservations to create street paths for highlighting
-   * checks for cached path data in geojson first, falls back to live geocoding
+   * Process reservations to create street paths for highlighting.
+   * This function extracts path data from geojson, falls back to live geocoding,
+   * and finally creates simple segments as a last resort.
+   * 
+   * @param reservationData - Array of reservation objects from the API
+   * @param mapInstance - The Google Maps instance (passed explicitly to avoid state timing issues)
    */
-  const processStreetPaths = async (reservations: MapReservationType[]) => {
-    if (!isLoaded || !map) return;
+  const processStreetPathsWithMap = async (reservationData: MapReservationType[], mapInstance: google.maps.Map) => {
+    if (!isLoaded || !mapInstance) {
+      console.log('Cannot process street paths - map or Google Maps not ready');
+      return;
+    }
     
+    console.log('Starting street path processing for', reservationData.length, 'reservations');
     const paths: StreetPath[] = [];
     
-    for (const reservation of reservations) {
+    for (const reservation of reservationData) {
       const r: any = reservation;
       const pos = getLatLng(r);
       if (!pos) continue;
@@ -221,20 +244,44 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
 
       // 1. Try to get path from cached geojson
       try {
-        if (r.geojson) {
+        if (r.geojson && r.geojson !== '{}') {
           const geoData = JSON.parse(r.geojson);
-          // Check if geojson contains path data (array of points)
-          // New format: { lat, lng, name, path: [...] }
-          // Or array of streets: [{ lat, lng, name, path: [...] }]
+          console.log(`Parsing geojson for ${r.street_name || r.streetName}:`, geoData);
           
-          if (Array.isArray(geoData) && geoData.length > 0 && geoData[0].path) {
-            path = geoData[0].path;
-          } else if (geoData.path) {
+          // Handle various geojson formats:
+          // Format 1: Array of streets with paths [{ lat, lng, name, path: [...] }]
+          if (Array.isArray(geoData) && geoData.length > 0) {
+            if (geoData[0].path && Array.isArray(geoData[0].path) && geoData[0].path.length > 0) {
+              path = geoData[0].path;
+              console.log(`Found path in array format, ${path.length} points`);
+            } else if (geoData[0].lat && geoData[0].lng) {
+              // Array with coordinates but no path - create segment from coordinates
+              const firstStreet = geoData[0];
+              const radius = 0.003; // ~300 meters for better visibility
+              path = [
+                { lat: firstStreet.lat - radius, lng: firstStreet.lng - radius },
+                { lat: firstStreet.lat + radius, lng: firstStreet.lng + radius },
+              ];
+              console.log(`Created path from array coordinates`);
+            }
+          }
+          // Format 2: Single object with path { lat, lng, path: [...] }
+          else if (geoData.path && Array.isArray(geoData.path) && geoData.path.length > 0) {
             path = geoData.path;
+            console.log(`Found path in object format, ${path.length} points`);
+          }
+          // Format 3: Single object with just coordinates { lat, lng }
+          else if (geoData.lat && geoData.lng) {
+            const radius = 0.003;
+            path = [
+              { lat: geoData.lat - radius, lng: geoData.lng - radius },
+              { lat: geoData.lat + radius, lng: geoData.lng + radius },
+            ];
+            console.log(`Created path from single object coordinates`);
           }
         }
       } catch (e) {
-        console.error('Error parsing geojson path:', e);
+        console.error('Error parsing geojson path:', e, 'geojson was:', r.geojson);
       }
       
       // 2. If no cached path, fall back to live geocoding (Legacy support)
@@ -262,12 +309,14 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
         }
       }
         
-      // 3. Final fallback: create simple segment from coordinates
+      // 3. Final fallback: create a visible segment from coordinates
       if (path.length === 0) {
-        const radius = 0.002;
+        console.log(`Using fallback path for ${r.street_name || r.streetName}`);
+        const radius = 0.003; // ~300 meters for good visibility
+        // Create a cross-shaped path for better visibility
         path = [
-          { lat: pos.lat - radius, lng: pos.lng - radius },
-          { lat: pos.lat + radius, lng: pos.lng + radius },
+          { lat: pos.lat - radius, lng: pos.lng },
+          { lat: pos.lat + radius, lng: pos.lng },
         ];
       }
         
@@ -277,9 +326,22 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
         reservationId: r.id || `${r.street_name}-${pos.lat}-${pos.lng}`,
         studentName: r.studentName || r.name || 'Unknown',
       });
+      
+      console.log(`Processed street: ${r.street_name || r.streetName}, path points: ${path.length}`);
     }
     
+    console.log(`Total street paths processed: ${paths.length}`);
     setStreetPaths(paths);
+  };
+
+  /**
+   * Legacy wrapper for processStreetPaths (for backward compatibility)
+   * @deprecated Use processStreetPathsWithMap instead
+   */
+  const processStreetPaths = async (reservationData: MapReservationType[]) => {
+    if (map) {
+      await processStreetPathsWithMap(reservationData, map);
+    }
   };
 
   /**
@@ -667,10 +729,10 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
             <strong>If you already have a reservation</strong>, you can edit it by adding or removing streets
           </Typography>
           <Typography component="li" variant="body2" sx={{ mb: 1, fontWeight: 600 }}>
-            <strong>Highlighted streets on the map</strong> show streets already reserved by other students
+            <strong style={{ color: '#dc2626' }}>🔴 RED highlighted streets</strong> show streets already reserved by other students - you cannot reserve these
           </Typography>
           <Typography component="li" variant="body2" sx={{ mb: 1, fontWeight: 600 }}>
-            <strong>Hover over highlighted streets</strong> to see which student reserved them
+            <strong>Hover over red markers/circles</strong> to see which student reserved that street
           </Typography>
           <Typography component="li" variant="body2" sx={{ mb: 1, fontWeight: 600 }}>
             <strong>For group members:</strong> Only add your friends' names, NOT your own name
@@ -723,14 +785,14 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
           
           return (
             <React.Fragment key={streetPath.reservationId}>
-              {/* Polyline highlighting the actual street path */}
+              {/* Polyline highlighting the actual street path - HIGHLY VISIBLE */}
               <Polyline
                 path={streetPath.path}
                 options={{
-                  strokeColor: isHovered ? '#2563eb' : '#3b82f6',
-                  strokeOpacity: isHovered ? 0.9 : 0.6,
-                  strokeWeight: isHovered ? 6 : 4,
-                  zIndex: isHovered ? 3 : 2,
+                  strokeColor: isHovered ? '#dc2626' : '#ef4444', // Red for reserved streets (more visible)
+                  strokeOpacity: isHovered ? 1.0 : 0.85,
+                  strokeWeight: isHovered ? 10 : 8, // Thicker lines for visibility
+                  zIndex: isHovered ? 10 : 5,
                   clickable: true,
                   cursor: 'pointer',
                 }}
@@ -738,44 +800,47 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
                 onMouseOut={handleStreetMouseLeave}
               />
               
-              {/* Circle highlight around the street for better visibility */}
+              {/* Circle highlight around the street for maximum visibility */}
               {map && (
                 <Circle
                   center={pos}
-                  radius={300}
+                  radius={400} // Larger radius for better visibility
                   options={{
-                    fillColor: isHovered ? '#2563eb' : '#3b82f6',
-                    fillOpacity: isHovered ? 0.3 : 0.2,
-                    strokeColor: isHovered ? '#1e40af' : '#2563eb',
-                    strokeOpacity: isHovered ? 0.9 : 0.7,
-                    strokeWeight: isHovered ? 5 : 3,
-                    clickable: false,
-                    zIndex: 1,
+                    fillColor: isHovered ? '#dc2626' : '#ef4444', // Red matching polyline
+                    fillOpacity: isHovered ? 0.4 : 0.25,
+                    strokeColor: isHovered ? '#b91c1c' : '#dc2626',
+                    strokeOpacity: isHovered ? 1.0 : 0.8,
+                    strokeWeight: isHovered ? 4 : 3,
+                    clickable: true,
+                    zIndex: isHovered ? 4 : 2,
                   }}
+                  onMouseOver={() => handleStreetMouseEnter(streetPath.reservationId, pos)}
+                  onMouseOut={handleStreetMouseLeave}
                 />
               )}
               
-              {/* Marker showing student initials */}
+              {/* Marker showing student initials - Red theme for reserved streets */}
               <Marker
                 position={pos}
                 label={{
                   text: getInitials(streetPath.studentName),
                   color: 'white',
                   fontWeight: 'bold',
+                  fontSize: '14px',
                 }}
                 icon={{
                   url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
-                    <svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
-                      <circle cx="20" cy="20" r="18" fill="${isHovered ? '#2563eb' : '#3b82f6'}" stroke="white" stroke-width="3"/>
-                      <text x="20" y="26" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" font-weight="bold" fill="white">
+                    <svg width="48" height="48" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+                      <circle cx="24" cy="24" r="22" fill="${isHovered ? '#b91c1c' : '#dc2626'}" stroke="white" stroke-width="4"/>
+                      <text x="24" y="30" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="white">
                         ${getInitials(streetPath.studentName)}
                       </text>
                     </svg>
                   `),
-                  scaledSize: new google.maps.Size(40, 40),
-                  anchor: new google.maps.Point(20, 20),
+                  scaledSize: new google.maps.Size(48, 48),
+                  anchor: new google.maps.Point(24, 24),
                 }}
-                zIndex={4}
+                zIndex={isHovered ? 15 : 10}
                 onMouseOver={() => handleStreetMouseEnter(streetPath.reservationId, pos)}
                 onMouseOut={handleStreetMouseLeave}
               />
@@ -789,12 +854,15 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
             position={hoverPosition}
             onCloseClick={handleStreetMouseLeave}
           >
-            <Box sx={{ p: 1 }}>
-              <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#2563eb' }}>
+            <Box sx={{ p: 1.5, minWidth: 180 }}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#dc2626', mb: 0.5 }}>
+                🚫 RESERVED STREET
+              </Typography>
+              <Typography variant="body2" sx={{ fontWeight: 600, color: '#1f2937', mb: 1 }}>
                 {streetPaths.find(sp => sp.reservationId === hoveredStreet)?.name || 'Street'}
               </Typography>
-              <Typography variant="body2" sx={{ mt: 0.5, color: '#666' }}>
-                Reserved by: <strong>{streetPaths.find(sp => sp.reservationId === hoveredStreet)?.studentName || 'Unknown'}</strong>
+              <Typography variant="body2" sx={{ color: '#4b5563' }}>
+                Reserved by: <strong style={{ color: '#dc2626' }}>{streetPaths.find(sp => sp.reservationId === hoveredStreet)?.studentName || 'Unknown'}</strong>
               </Typography>
             </Box>
           </InfoWindow>
