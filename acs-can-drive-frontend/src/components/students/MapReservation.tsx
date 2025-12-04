@@ -450,6 +450,10 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
     console.log('Starting street path processing for', reservationData.length, 'reservations');
     const paths: StreetPath[] = [];
     
+    // Add delay helper to avoid API rate limits
+    const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+    let apiCallCount = 0;
+    
     for (const reservation of reservationData) {
       const r: any = reservation;
       const pos = getLatLng(r);
@@ -469,31 +473,15 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
             if (geoData[0].path && Array.isArray(geoData[0].path) && geoData[0].path.length > 0) {
               path = geoData[0].path;
               console.log(`Found path in array format, ${path.length} points`);
-            } else if (geoData[0].lat && geoData[0].lng) {
-              // Array with coordinates but no path - create segment from coordinates
-              const firstStreet = geoData[0];
-              const radius = 0.003; // ~300 meters for better visibility
-              path = [
-                { lat: firstStreet.lat - radius, lng: firstStreet.lng - radius },
-                { lat: firstStreet.lat + radius, lng: firstStreet.lng + radius },
-              ];
-              console.log(`Created path from array coordinates`);
             }
+            // If only coordinates, leave path empty to trigger Directions API
           }
           // Format 2: Single object with path { lat, lng, path: [...] }
           else if (geoData.path && Array.isArray(geoData.path) && geoData.path.length > 0) {
             path = geoData.path;
             console.log(`Found path in object format, ${path.length} points`);
           }
-          // Format 3: Single object with just coordinates { lat, lng }
-          else if (geoData.lat && geoData.lng) {
-            const radius = 0.003;
-            path = [
-              { lat: geoData.lat - radius, lng: geoData.lng - radius },
-              { lat: geoData.lat + radius, lng: geoData.lng + radius },
-            ];
-            console.log(`Created path from single object coordinates`);
-          }
+          // Format 3: Single object with just coordinates - leave empty to trigger Directions API
         }
       } catch (e) {
         console.error('Error parsing geojson path:', e, 'geojson was:', r.geojson);
@@ -504,7 +492,8 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
         try {
           const streetName = r.street_name || r.streetName || '';
           if (streetName) {
-            console.log(`Fetching actual road path for reservation: ${streetName}`);
+            apiCallCount++;
+            console.log(`[${apiCallCount}/${reservationData.length}] Fetching actual road path for: ${streetName}`);
             
             // First, geocode to get the street's geometry
             const geocoder = new google.maps.Geocoder();
@@ -522,6 +511,12 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
               // Use Directions API to get the actual road path
               const geometry = geocodeResult[0].geometry;
               path = await getActualRoadPathFromGeometry(streetName, geometry);
+              
+              // Add delay every 10 requests to avoid rate limiting
+              if (apiCallCount % 10 === 0) {
+                console.log(`Rate limit pause: waiting 1 second...`);
+                await delay(1000);
+              }
             }
           }
         } catch (error) {
@@ -529,13 +524,14 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
         }
       }
         
-      // 3. Final fallback: create a visible segment from coordinates
+      // 3. Final fallback: create a visible segment (horizontal line, not diagonal)
       if (path.length === 0) {
-        console.log(`Using fallback path for ${r.street_name || r.streetName}`);
+        console.log(`Using fallback horizontal line for ${r.street_name || r.streetName}`);
         const radius = 0.003; // ~300 meters for good visibility
+        // Create a horizontal line through the center point
         path = [
-          { lat: pos.lat - radius, lng: pos.lng },
-          { lat: pos.lat + radius, lng: pos.lng },
+          { lat: pos.lat, lng: pos.lng - radius },
+          { lat: pos.lat, lng: pos.lng + radius },
         ];
       }
         
