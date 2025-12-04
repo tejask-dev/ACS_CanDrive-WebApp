@@ -37,6 +37,8 @@ export interface MapReservation {
   streetName: string;
   latitude: number;
   longitude: number;
+  geojson?: string;           // JSON string containing street path coordinates
+  groupMembers?: string;      // Comma-separated names of group collection partners
   createdAt: string;
 }
 

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Box, Typography, Paper, List, ListItem, ListItemText, Chip, Button, Stack, IconButton, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
+import { Box, Typography, Paper, List, ListItem, Chip, Button, Stack, IconButton, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
 import { Map as MapIcon, FileDownload, Delete, Warning, FileUpload } from '@mui/icons-material';
 import { toast } from 'sonner';
 import api from '@/services/api';
@@ -191,7 +191,7 @@ const MapView = () => {
                     Group Collection Members:
                   </Typography>
                   <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                    {reservation.groupMembers.split(',').map((member, index) => (
+                    {reservation.groupMembers.split(',').map((member: string, index: number) => (
                       <Chip
                         key={index}
                         label={member.trim()}

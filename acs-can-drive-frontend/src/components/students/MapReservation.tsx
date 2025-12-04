@@ -187,15 +187,27 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
         const ne = bounds.getNorthEast();
         const sw = bounds.getSouthWest();
         
-        // Create origin and destination at opposite ends of the street's viewport
-        origin = { lat: sw.lat(), lng: sw.lng() };
-        destination = { lat: ne.lat(), lng: ne.lng() };
+        // Determine street orientation to avoid diagonal lines
+        const latDiff = Math.abs(ne.lat() - sw.lat());
+        const lngDiff = Math.abs(ne.lng() - sw.lng());
+        
+        if (lngDiff > latDiff) {
+          // Horizontal street - use west to east points at mid latitude
+          const midLat = (ne.lat() + sw.lat()) / 2;
+          origin = { lat: midLat, lng: sw.lng() };
+          destination = { lat: midLat, lng: ne.lng() };
+        } else {
+          // Vertical street - use south to north points at mid longitude
+          const midLng = (ne.lng() + sw.lng()) / 2;
+          origin = { lat: sw.lat(), lng: midLng };
+          destination = { lat: ne.lat(), lng: midLng };
+        }
       } else if (geometry.location) {
         // If no viewport, create points along the street using the location
         const center = geometry.location;
         const offset = 0.005; // ~500m offset
-        origin = { lat: center.lat() - offset, lng: center.lng() - offset };
-        destination = { lat: center.lat() + offset, lng: center.lng() + offset };
+        origin = { lat: center.lat() - offset, lng: center.lng() };
+        destination = { lat: center.lat() + offset, lng: center.lng() };
       } else {
         resolve([]);
         return;
@@ -310,23 +322,32 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
       let origin: google.maps.LatLngLiteral;
       let destination: google.maps.LatLngLiteral;
       
-      if (geometry.viewport) {
-        const bounds = geometry.viewport;
+      const bounds = geometry.viewport || geometry.bounds;
+      
+      if (bounds) {
         const ne = bounds.getNorthEast();
         const sw = bounds.getSouthWest();
-        origin = { lat: sw.lat(), lng: sw.lng() };
-        destination = { lat: ne.lat(), lng: ne.lng() };
-      } else if (geometry.bounds) {
-        const bounds = geometry.bounds;
-        const ne = bounds.getNorthEast();
-        const sw = bounds.getSouthWest();
-        origin = { lat: sw.lat(), lng: sw.lng() };
-        destination = { lat: ne.lat(), lng: ne.lng() };
+        
+        // Determine street orientation to avoid diagonal lines
+        const latDiff = Math.abs(ne.lat() - sw.lat());
+        const lngDiff = Math.abs(ne.lng() - sw.lng());
+        
+        if (lngDiff > latDiff) {
+          // Horizontal street - use west to east points at mid latitude
+          const midLat = (ne.lat() + sw.lat()) / 2;
+          origin = { lat: midLat, lng: sw.lng() };
+          destination = { lat: midLat, lng: ne.lng() };
+        } else {
+          // Vertical street - use south to north points at mid longitude
+          const midLng = (ne.lng() + sw.lng()) / 2;
+          origin = { lat: sw.lat(), lng: midLng };
+          destination = { lat: ne.lat(), lng: midLng };
+        }
       } else if (geometry.location) {
         const center = geometry.location;
         const offset = 0.005;
-        origin = { lat: center.lat() - offset, lng: center.lng() - offset };
-        destination = { lat: center.lat() + offset, lng: center.lng() + offset };
+        origin = { lat: center.lat(), lng: center.lng() - offset };
+        destination = { lat: center.lat(), lng: center.lng() + offset };
       } else {
         resolve([]);
         return;
