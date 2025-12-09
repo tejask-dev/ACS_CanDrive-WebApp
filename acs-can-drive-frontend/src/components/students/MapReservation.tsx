@@ -457,19 +457,19 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
     for (const reservation of reservationData) {
       const r: any = reservation;
       const pos = getLatLng(r);
-      if (!pos) continue;
       
-      // Validate coordinates are reasonable (check for NaN, null, or extreme outliers only)
-      // Windsor area is roughly: lat 42.2-42.4, lng -83.2 to -82.9
-      // But use VERY wide bounds to avoid filtering legitimate streets
-      const isValidCoordinate = 
-        pos.lat !== null && pos.lat !== undefined && !isNaN(pos.lat) &&
-        pos.lng !== null && pos.lng !== undefined && !isNaN(pos.lng) &&
-        pos.lat >= 40.0 && pos.lat <= 44.0 &&  // Very wide Southern Ontario bounds
-        pos.lng >= -85.0 && pos.lng <= -80.0;   // Very wide Southern Ontario bounds
+      // DEBUG: Log what we got
+      if (!pos) {
+        console.log(`No position found for ${r.street_name || r.streetName}`);
+        continue;
+      }
       
-      if (!isValidCoordinate) {
-        console.error(`Truly invalid coordinates for ${r.street_name || r.streetName}:`, pos);
+      console.log(`Position for ${r.street_name || r.streetName}:`, pos);
+      
+      // Basic sanity check - only filter truly broken data (NaN, not numbers)
+      if (typeof pos.lat !== 'number' || typeof pos.lng !== 'number' || 
+          isNaN(pos.lat) || isNaN(pos.lng)) {
+        console.error(`Invalid coordinate types for ${r.street_name || r.streetName}:`, pos);
         continue;
       }
 
@@ -908,10 +908,14 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
    * Handles multiple data formats (geojson, direct lat/lng, etc.)
    */
   const getLatLng = (r: any): { lat: number; lng: number } | null => {
-    // Try direct latitude/longitude fields first
-    const lat = r?.latitude;
-    const lng = r?.longitude;
-    if (typeof lat === 'number' && typeof lng === 'number') return { lat, lng };
+    // Try direct latitude/longitude fields first (handle both number and string types)
+    if (r?.latitude !== undefined && r?.longitude !== undefined) {
+      const lat = typeof r.latitude === 'number' ? r.latitude : parseFloat(r.latitude);
+      const lng = typeof r.longitude === 'number' ? r.longitude : parseFloat(r.longitude);
+      if (!isNaN(lat) && !isNaN(lng)) {
+        return { lat, lng };
+      }
+    }
     
     // Try parsing geojson
     try {
