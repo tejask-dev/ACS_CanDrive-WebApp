@@ -458,6 +458,16 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
       const r: any = reservation;
       const pos = getLatLng(r);
       if (!pos) continue;
+      
+      // Validate coordinates are in Windsor area (rough bounds check)
+      const isValidWindsorCoordinate = 
+        pos.lat >= 42.0 && pos.lat <= 42.5 &&
+        pos.lng >= -83.3 && pos.lng <= -82.8;
+      
+      if (!isValidWindsorCoordinate) {
+        console.warn(`Invalid coordinates for ${r.street_name || r.streetName}:`, pos);
+        continue;
+      }
 
       let path: google.maps.LatLngLiteral[] = [];
 
@@ -926,8 +936,19 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
 
   /**
    * Handle mouse enter on a street path - show hover tooltip
+   * Only shows if coordinates are valid (within Windsor area)
    */
   const handleStreetMouseEnter = (reservationId: string, position: { lat: number; lng: number }) => {
+    // Validate coordinates are in Windsor area (rough bounds)
+    const isValidWindsorCoordinate = 
+      position.lat >= 42.0 && position.lat <= 42.5 &&
+      position.lng >= -83.3 && position.lng <= -82.8;
+    
+    if (!isValidWindsorCoordinate) {
+      console.warn('Invalid coordinates detected:', position);
+      return;
+    }
+    
     setHoveredStreet(reservationId);
     setHoverPosition(position);
   };
@@ -938,6 +959,19 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
   const handleStreetMouseLeave = () => {
     setHoveredStreet(null);
     setHoverPosition(null);
+  };
+
+  /**
+   * Handle click on reserved street - PREVENT map navigation, just show info
+   */
+  const handleStreetClick = (event: any, reservationId: string, position: { lat: number; lng: number }) => {
+    // Prevent default click behavior that might pan/zoom the map
+    if (event) {
+      event.stop();
+    }
+    
+    // Just show the hover info, don't pan the map
+    handleStreetMouseEnter(reservationId, position);
   };
 
   return (
@@ -1027,6 +1061,7 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
                 }}
                 onMouseOver={() => handleStreetMouseEnter(streetPath.reservationId, pos)}
                 onMouseOut={handleStreetMouseLeave}
+                onClick={(e) => handleStreetClick(e, streetPath.reservationId, pos)}
               />
               
               {/* Circle highlight around the street for maximum visibility */}
@@ -1045,6 +1080,7 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
                   }}
                   onMouseOver={() => handleStreetMouseEnter(streetPath.reservationId, pos)}
                   onMouseOut={handleStreetMouseLeave}
+                  onClick={(e) => handleStreetClick(e, streetPath.reservationId, pos)}
                 />
               )}
               
@@ -1072,6 +1108,7 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
                 zIndex={isHovered ? 15 : 10}
                 onMouseOver={() => handleStreetMouseEnter(streetPath.reservationId, pos)}
                 onMouseOut={handleStreetMouseLeave}
+                onClick={(e) => handleStreetClick(e, streetPath.reservationId, pos)}
               />
             </React.Fragment>
           );
@@ -1082,6 +1119,10 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
           <InfoWindow
             position={hoverPosition}
             onCloseClick={handleStreetMouseLeave}
+            options={{
+              pixelOffset: new google.maps.Size(0, -10),
+              disableAutoPan: true, // CRITICAL: Prevents InfoWindow from panning the map
+            }}
           >
             <Box sx={{ p: 1.5, minWidth: 180 }}>
               <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#dc2626', mb: 0.5 }}>
