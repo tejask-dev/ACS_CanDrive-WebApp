@@ -459,13 +459,17 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
       const pos = getLatLng(r);
       if (!pos) continue;
       
-      // Validate coordinates are in Windsor area (rough bounds check)
-      const isValidWindsorCoordinate = 
-        pos.lat >= 42.0 && pos.lat <= 42.5 &&
-        pos.lng >= -83.3 && pos.lng <= -82.8;
+      // Validate coordinates are reasonable (check for NaN, null, or extreme outliers only)
+      // Windsor area is roughly: lat 42.2-42.4, lng -83.2 to -82.9
+      // But use VERY wide bounds to avoid filtering legitimate streets
+      const isValidCoordinate = 
+        pos.lat !== null && pos.lat !== undefined && !isNaN(pos.lat) &&
+        pos.lng !== null && pos.lng !== undefined && !isNaN(pos.lng) &&
+        pos.lat >= 40.0 && pos.lat <= 44.0 &&  // Very wide Southern Ontario bounds
+        pos.lng >= -85.0 && pos.lng <= -80.0;   // Very wide Southern Ontario bounds
       
-      if (!isValidWindsorCoordinate) {
-        console.warn(`Invalid coordinates for ${r.street_name || r.streetName}:`, pos);
+      if (!isValidCoordinate) {
+        console.error(`Truly invalid coordinates for ${r.street_name || r.streetName}:`, pos);
         continue;
       }
 
@@ -936,15 +940,11 @@ const MapReservation = ({ eventId, studentId, studentName, onComplete, isTeacher
 
   /**
    * Handle mouse enter on a street path - show hover tooltip
-   * Only shows if coordinates are valid (within Windsor area)
+   * Only shows if coordinates are valid (not NaN/null)
    */
   const handleStreetMouseEnter = (reservationId: string, position: { lat: number; lng: number }) => {
-    // Validate coordinates are in Windsor area (rough bounds)
-    const isValidWindsorCoordinate = 
-      position.lat >= 42.0 && position.lat <= 42.5 &&
-      position.lng >= -83.3 && position.lng <= -82.8;
-    
-    if (!isValidWindsorCoordinate) {
+    // Basic validation - just check for NaN/null
+    if (!position || isNaN(position.lat) || isNaN(position.lng)) {
       console.warn('Invalid coordinates detected:', position);
       return;
     }
