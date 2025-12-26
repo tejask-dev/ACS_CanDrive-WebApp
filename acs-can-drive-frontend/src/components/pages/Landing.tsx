@@ -34,12 +34,18 @@ import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { Container, Typography, Box, Stack, Card, CardContent, Button as MUIButton, Dialog, DialogTitle, DialogContent, DialogActions, TextField } from '@mui/material';
 import { PersonAdd, Map, TrendingUp, EmojiEvents, Lock } from '@mui/icons-material';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
 import DailyDonors from './DailyDonors';
+import api from '@/services/api';
+import { API_ENDPOINTS } from '@/config/api';
 
 const Landing = () => {
   const navigate = useNavigate();
+
+  // Leaderboard data state
+  const [leaderboardData, setLeaderboardData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
   // Password protection state
   const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
@@ -50,6 +56,21 @@ const Landing = () => {
   const [revealDialogOpen, setRevealDialogOpen] = useState(false);
   const [revealPassword, setRevealPassword] = useState('');
   const [revealPasswordError, setRevealPasswordError] = useState('');
+
+  // Fetch leaderboard data on mount
+  useEffect(() => {
+    const fetchLeaderboard = async () => {
+      try {
+        const response = await api.get(API_ENDPOINTS.EVENTS.LEADERBOARD('1'));
+        setLeaderboardData(response.data);
+      } catch (error) {
+        console.error('Failed to fetch leaderboard:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchLeaderboard();
+  }, []);
 
   // Password protection functions
   const handleViewLeaderboard = () => {
@@ -357,7 +378,7 @@ const Landing = () => {
 
               <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.98 }}>
                 <MUIButton
-                  onClick={handleViewLeaderboard}
+                  onClick={() => navigate('/leaderboard')}
                   sx={{
                     px: 4,
                     py: 1.5,
@@ -373,7 +394,7 @@ const Landing = () => {
                     }
                   }}
                 >
-                  <Lock sx={{ mr: 1, fontSize: '1.1rem' }} />
+                  <TrendingUp sx={{ mr: 1, fontSize: '1.1rem' }} />
                   View Leaderboard
                 </MUIButton>
               </motion.div>
@@ -605,31 +626,41 @@ const Landing = () => {
                         textAlign: 'center',
                       }}
                     >
-                      Top Students
+                      🥇 Top Students
                     </Typography>
-                    <Box
-                      sx={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        p: 4,
-                        bgcolor: 'hsl(270, 60%, 97%)',
-                        borderRadius: 2,
-                        border: '2px solid hsl(270, 60%, 85%)',
-                        textAlign: 'center',
-                      }}
-                    >
-                      <Typography
-                        sx={{
-                          fontSize: '1.2rem',
-                          fontWeight: 700,
-                          color: 'hsl(270, 60%, 50%)',
-                          textAlign: 'center',
-                        }}
-                      >
-                        🎉 FINAL numbers will be revealed at the assembly! 🎉
+                    {loading ? (
+                      <Box sx={{ textAlign: 'center', p: 3 }}>
+                        <Typography>Loading...</Typography>
+                      </Box>
+                    ) : leaderboardData?.topStudents?.length > 0 ? (
+                      <Stack spacing={2}>
+                        {leaderboardData.topStudents.slice(0, 5).map((student: any, index: number) => (
+                          <Box
+                            key={index}
+                            sx={{
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              p: 2,
+                              bgcolor: index === 0 ? 'hsl(45, 100%, 95%)' : 'hsl(270, 60%, 97%)',
+                              borderRadius: 2,
+                              border: index === 0 ? '2px solid hsl(45, 100%, 70%)' : '1px solid hsl(270, 60%, 85%)',
+                            }}
+                          >
+                            <Typography sx={{ fontWeight: 700, color: 'hsl(270, 60%, 40%)' }}>
+                              {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}.`} {student.name}
+                            </Typography>
+                            <Badge className="bg-primary text-white">
+                              {student.totalCans} cans
+                            </Badge>
+                          </Box>
+                        ))}
+                      </Stack>
+                    ) : (
+                      <Typography sx={{ textAlign: 'center', color: 'hsl(240, 6%, 46%)' }}>
+                        No data yet
                       </Typography>
-                    </Box>
+                    )}
                   </CardContent>
                 </Card>
 
@@ -652,31 +683,41 @@ const Landing = () => {
                         textAlign: 'center',
                       }}
                     >
-                      Top Classes
+                      🏫 Top Classes
                     </Typography>
-                    <Box
-                      sx={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        p: 4,
-                        bgcolor: 'hsl(270, 60%, 97%)',
-                        borderRadius: 2,
-                        border: '2px solid hsl(270, 60%, 85%)',
-                        textAlign: 'center',
-                      }}
-                    >
-                      <Typography
-                        sx={{
-                          fontSize: '1.2rem',
-                          fontWeight: 700,
-                          color: 'hsl(270, 60%, 50%)',
-                          textAlign: 'center',
-                        }}
-                      >
-                        🎉 FINAL numbers will be revealed at the assembly! 🎉
+                    {loading ? (
+                      <Box sx={{ textAlign: 'center', p: 3 }}>
+                        <Typography>Loading...</Typography>
+                      </Box>
+                    ) : leaderboardData?.topClasses?.length > 0 ? (
+                      <Stack spacing={2}>
+                        {leaderboardData.topClasses.slice(0, 5).map((classItem: any, index: number) => (
+                          <Box
+                            key={index}
+                            sx={{
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              p: 2,
+                              bgcolor: index === 0 ? 'hsl(45, 100%, 95%)' : 'hsl(270, 60%, 97%)',
+                              borderRadius: 2,
+                              border: index === 0 ? '2px solid hsl(45, 100%, 70%)' : '1px solid hsl(270, 60%, 85%)',
+                            }}
+                          >
+                            <Typography sx={{ fontWeight: 700, color: 'hsl(270, 60%, 40%)' }}>
+                              {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}.`} {classItem.name}
+                            </Typography>
+                            <Badge className="bg-primary text-white">
+                              {classItem.totalCans} cans
+                            </Badge>
+                          </Box>
+                        ))}
+                      </Stack>
+                    ) : (
+                      <Typography sx={{ textAlign: 'center', color: 'hsl(240, 6%, 46%)' }}>
+                        No data yet
                       </Typography>
-                    </Box>
+                    )}
                   </CardContent>
                 </Card>
 
@@ -699,31 +740,41 @@ const Landing = () => {
                         textAlign: 'center',
                       }}
                     >
-                      Top Grades
+                      📚 Top Grades
                     </Typography>
-                    <Box
-                      sx={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        p: 4,
-                        bgcolor: 'hsl(270, 60%, 97%)',
-                        borderRadius: 2,
-                        border: '2px solid hsl(270, 60%, 85%)',
-                        textAlign: 'center',
-                      }}
-                    >
-                      <Typography
-                        sx={{
-                          fontSize: '1.2rem',
-                          fontWeight: 700,
-                          color: 'hsl(270, 60%, 50%)',
-                          textAlign: 'center',
-                        }}
-                      >
-                        🎉 FINAL numbers will be revealed at the assembly! 🎉
+                    {loading ? (
+                      <Box sx={{ textAlign: 'center', p: 3 }}>
+                        <Typography>Loading...</Typography>
+                      </Box>
+                    ) : leaderboardData?.topGrades?.length > 0 ? (
+                      <Stack spacing={2}>
+                        {leaderboardData.topGrades.slice(0, 5).map((grade: any, index: number) => (
+                          <Box
+                            key={index}
+                            sx={{
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              p: 2,
+                              bgcolor: index === 0 ? 'hsl(45, 100%, 95%)' : 'hsl(270, 60%, 97%)',
+                              borderRadius: 2,
+                              border: index === 0 ? '2px solid hsl(45, 100%, 70%)' : '1px solid hsl(270, 60%, 85%)',
+                            }}
+                          >
+                            <Typography sx={{ fontWeight: 700, color: 'hsl(270, 60%, 40%)' }}>
+                              {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}.`} Grade {grade.grade}
+                            </Typography>
+                            <Badge className="bg-primary text-white">
+                              {grade.totalCans} cans
+                            </Badge>
+                          </Box>
+                        ))}
+                      </Stack>
+                    ) : (
+                      <Typography sx={{ textAlign: 'center', color: 'hsl(240, 6%, 46%)' }}>
+                        No data yet
                       </Typography>
-                    </Box>
+                    )}
                   </CardContent>
                 </Card>
 
@@ -748,29 +799,44 @@ const Landing = () => {
                     >
                       🎯 Class Buyout
                     </Typography>
-                    <Box
-                      sx={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        p: 4,
-                        bgcolor: 'hsl(142, 76%, 97%)',
-                        borderRadius: 2,
-                        border: '2px solid hsl(142, 76%, 85%)',
-                        textAlign: 'center',
-                      }}
-                    >
-                      <Typography
-                        sx={{
-                          fontSize: '1.2rem',
-                          fontWeight: 700,
-                          color: 'hsl(142, 76%, 36%)',
-                          textAlign: 'center',
-                        }}
-                      >
-                        🎉 FINAL numbers will be revealed at the assembly! 🎉
+                    {loading ? (
+                      <Box sx={{ textAlign: 'center', p: 3 }}>
+                        <Typography>Loading...</Typography>
+                      </Box>
+                    ) : leaderboardData?.classBuyout?.length > 0 ? (
+                      <Stack spacing={2}>
+                        {leaderboardData.classBuyout.slice(0, 5).map((classItem: any, index: number) => (
+                          <Box
+                            key={index}
+                            sx={{
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              p: 2,
+                              bgcolor: 'hsl(142, 76%, 97%)',
+                              borderRadius: 2,
+                              border: '2px solid hsl(142, 76%, 70%)',
+                            }}
+                          >
+                            <Box>
+                              <Typography sx={{ fontWeight: 700, color: 'hsl(142, 76%, 36%)' }}>
+                                ✅ {classItem.class_name}
+                              </Typography>
+                              <Typography sx={{ fontSize: '0.8rem', color: 'hsl(142, 76%, 30%)' }}>
+                                {classItem.actual_cans}/{classItem.required_cans} cans
+                              </Typography>
+                            </Box>
+                            <Badge className="bg-success text-white">
+                              {Math.round(classItem.progress_percentage)}%
+                            </Badge>
+                          </Box>
+                        ))}
+                      </Stack>
+                    ) : (
+                      <Typography sx={{ textAlign: 'center', color: 'hsl(240, 6%, 46%)' }}>
+                        No eligible classes yet
                       </Typography>
-                    </Box>
+                    )}
                   </CardContent>
                 </Card>
               </Box>
